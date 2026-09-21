@@ -25,6 +25,93 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+API que integra los módulos de **Courses**, **Students** y **Enrollments** (matrículas), todos administrados con listas en memoria.
+
+## Endpoints
+
+### Courses
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/courses` | Lista cursos (filtro opcional `?level=`) |
+| GET | `/courses/:id` | Obtiene un curso |
+| POST | `/courses` | Crea un curso |
+| PATCH | `/courses/:id` | Actualiza un curso |
+| DELETE | `/courses/:id` | Elimina un curso |
+| GET | `/courses/:courseId/enrollments` | Matrículas de un curso |
+
+### Students
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/students` | Lista estudiantes (filtros `career`, `semester`, `isActive`) |
+| GET | `/students/:id` | Obtiene un estudiante |
+| POST | `/students` | Crea un estudiante |
+| PATCH | `/students/:id` | Actualiza un estudiante |
+| DELETE | `/students/:id` | Elimina un estudiante (solo si está activo) |
+| PATCH | `/students/:id/status` | Activa/inactiva un estudiante |
+| GET | `/students/:studentId/enrollments` | Matrículas de un estudiante |
+
+### Enrollments (Matrículas)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/enrollments` | Registra una matrícula |
+| GET | `/enrollments` | Lista matrículas (filtros combinables `studentId`, `courseId`) |
+| DELETE | `/enrollments/:id` | Cancela una matrícula |
+
+## Ejemplos de request / response
+
+**1) Matrícula válida**
+
+POST /enrollments
+{ "studentId": "1790017500185", "courseId": 1 }
+
+201 Created
+{ "id": 1, "studentId": "1790017500185", "courseId": 1 }
+
+
+**2) Matrícula duplicada (mismo estudiante + curso)**
+
+POST /enrollments
+{ "studentId": "1790017500185", "courseId": 1 }
+
+409 Conflict
+{ "message": "El estudiante "1790017500185" ya está matriculado en el curso "1"", "error": "Conflict", "statusCode": 409 }
+
+
+**3) Estudiante inactivo**
+
+POST /enrollments
+{ "studentId": "1790017500185", "courseId": 2 }
+
+409 Conflict
+{ "message": "El estudiante con ID "1790017500185" se encuentra inactivo", "error": "Conflict", "statusCode": 409 }
+
+
+**4) Identificador inexistente (curso 999)**
+
+POST /enrollments
+{ "studentId": "1790017500185", "courseId": 999 }
+
+404 Not Found
+{ "message": "El curso con ID "999" no existe", "error": "Not Found", "statusCode": 404 }
+
+
+**5) Filtros combinables**
+
+GET /enrollments?courseId=1
+GET /courses/1/enrollments
+GET /students/1790017500185/enrollments
+
+
+**6) Cancelar matrícula**
+
+DELETE /enrollments/1
+
+204 No Content
+
+
 ## Project setup
 
 ```bash
