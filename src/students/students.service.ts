@@ -12,7 +12,8 @@ export class StudentsService {
     private readonly studentRepository: Repository<Student>,
   ) {}
 
-  async findAll(career?: string) {
+  async findAll(filters?: any) {
+    const career = typeof filters === 'string' ? filters : filters?.career;
     return this.studentRepository.find({
       where: career ? { career } : {},
     });
@@ -55,5 +56,11 @@ export class StudentsService {
     const student = await this.findOne(id);
     await this.studentRepository.remove(student);
     return student;
+  }
+
+  async toggleStatus(id: number) {
+    const student = await this.findOne(id);
+    student.isActive = !student.isActive;
+    return await this.studentRepository.save(student);
   }
 }
