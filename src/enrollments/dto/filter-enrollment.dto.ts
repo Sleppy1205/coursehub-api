@@ -1,13 +1,16 @@
-import { IsInt, IsOptional, IsString } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, Min } from 'class-validator';
 
 export class FilterEnrollmentDto {
   @IsOptional()
-  @IsString()
-  studentId?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  studentId?: number;
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value, 10))
+  @Type(() => Number)
   @IsInt()
+  @Min(1)
   courseId?: number;
 }

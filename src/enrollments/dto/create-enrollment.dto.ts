@@ -1,10 +1,14 @@
-import { IsInt, IsNotEmpty, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsInt, Min } from 'class-validator';
 
 export class CreateEnrollmentDto {
-  @IsString()
-  @IsNotEmpty()
-  studentId: string;
-
+  @Type(() => Number)
   @IsInt()
+  @Min(1)
+  studentId: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   courseId: number;
 }
