@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { Enrollment } from './entities/enrollment.entity.js';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto.js';
+import { EnrollmentsQueryDto } from './dto/enrollments-query.dto.js';
 import { Student } from '../students/entities/student.entity.js';
 import { Course } from '../courses/entities/course.entity.js';
 
@@ -63,15 +64,42 @@ export class EnrollmentsService {
     }
   }
 
-  async findAll(studentId?: number, courseId?: number): Promise<Enrollment[]> {
-    return this.enrollmentsRepository.find({
-      where: {
-        ...(studentId !== undefined ? { student: { id: studentId } } : {}),
-        ...(courseId !== undefined ? { course: { id: courseId } } : {}),
+  async findAll(query: EnrollmentsQueryDto) {
+    const queryBuilder = this.enrollmentsRepository
+      .createQueryBuilder('enrollment')
+      .leftJoinAndSelect('enrollment.student', 'student')
+      .leftJoinAndSelect('enrollment.course', 'course');
+
+    if (query.search?.trim()) {
+      queryBuilder.andWhere(
+        '(student.name ILIKE :search OR course.title ILIKE :search)',
+        { search: `%${query.search.trim()}%` },
+      );
+    }
+    if (query.studentId !== undefined) {
+      queryBuilder.andWhere('student.id = :studentId', { studentId: query.studentId });
+    }
+    if (query.courseId !== undefined) {
+      queryBuilder.andWhere('course.id = :courseId', { courseId: query.courseId });
+    }
+    if (query.activeOnly === 'true') {
+      queryBuilder.andWhere('student.isActive = :active', { active: true });
+    }
+
+    const [items, total] = await queryBuilder
+      .orderBy('enrollment.id', 'ASC')
+      .skip((query.page - 1) * query.limit)
+      .take(query.limit)
+      .getManyAndCount();
+
+    return {
+      items,
+      meta: {
+        total,
+        page: query.page,
+        limit: query.limit,
       },
-      relations: { student: true, course: true },
-      order: { id: 'ASC' },
-    });
+    };
   }
 
   async findByStudent(studentId: number): Promise<Enrollment[]> {
@@ -79,7 +107,11 @@ export class EnrollmentsService {
     if (!student) {
       throw new NotFoundException(`Student ${studentId} not found`);
     }
-    return this.findAll(studentId);
+    return this.enrollmentsRepository.find({
+      where: { student: { id: studentId } },
+      relations: { student: true, course: true },
+      order: { id: 'ASC' },
+    });
   }
 
   async findByCourse(courseId: number): Promise<Enrollment[]> {
@@ -87,7 +119,11 @@ export class EnrollmentsService {
     if (!course) {
       throw new NotFoundException(`Course ${courseId} not found`);
     }
-    return this.findAll(undefined, courseId);
+    return this.enrollmentsRepository.find({
+      where: { course: { id: courseId } },
+      relations: { student: true, course: true },
+      order: { id: 'ASC' },
+    });
   }
 
   async remove(id: number): Promise<Enrollment> {

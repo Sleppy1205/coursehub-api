@@ -73,8 +73,39 @@ npm run start:prod
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | POST | `/enrollments` | Matricula un estudiante activo en un curso |
-| GET | `/enrollments` | Lista matrículas (filtros opcionales `studentId` y `courseId`) |
+| GET | `/enrollments` | Busca y pagina matrículas con filtros `search`, `studentId`, `courseId` y `activeOnly` |
 | DELETE | `/enrollments/:id` | Cancela una matrícula existente |
+
+### Buscar matrículas con filtros y paginación
+
+`GET /enrollments` acepta `search` (coincidencia parcial y sin distinguir mayúsculas en el nombre del estudiante o título del curso), `studentId`, `courseId`, `activeOnly=true`, `page` y `limit`. La página predeterminada es 1 y el límite predeterminado es 10, con máximo de 50. Los datos de estudiante y curso se incluyen en cada matrícula.
+
+```http
+GET /enrollments?search=nest&activeOnly=true&page=1&limit=5
+```
+
+```json
+{
+  "items": [
+    {
+      "id": 4,
+      "student": {
+        "id": 1,
+        "name": "Ana",
+        "email": "ana@example.com",
+        "age": 21,
+        "career": "Software Engineering",
+        "semester": 4,
+        "isActive": true
+      },
+      "course": { "id": 2, "title": "NestJS Básico", "level": "beginner" }
+    }
+  ],
+  "meta": { "total": 1, "page": 1, "limit": 5 }
+}
+```
+
+La búsqueda se envía como parámetro de consulta, no se concatena en SQL. Una búsqueda sin coincidencias responde `200` con `items: []` y `total: 0`.
 
 ### Listar cursos con filtros y paginación
 
