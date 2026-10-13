@@ -15,7 +15,7 @@ export class EnrollmentsService {
     private readonly coursesService: CoursesService,
   ) {}
 
-  async create(dto: CreateEnrollmentDto) {
+  async create(dto: CreateEnrollmentDto): Promise<Enrollment> {
     const studentId = Number((dto as any).studentId || (dto as any).student);
     const courseId = Number((dto as any).courseId || (dto as any).course);
 
@@ -38,10 +38,7 @@ export class EnrollmentsService {
     }
   }
 
-  async findAll(filters?: any) {
-    const studentId = typeof filters === 'number' ? filters : Number(filters?.studentId);
-    const courseId = Number(filters?.courseId);
-
+  async findAll(studentId?: number, courseId?: number): Promise<Enrollment[]> {
     const where: any = {};
     if (studentId) where.student = { id: studentId };
     if (courseId) where.course = { id: courseId };
@@ -49,20 +46,21 @@ export class EnrollmentsService {
     return this.enrollmentsRepository.find({
       where,
       relations: { student: true, course: true },
+      order: { id: 'ASC' },
     });
   }
 
-  async findByStudent(studentId: number) {
+  async findByStudent(studentId: number): Promise<Enrollment[]> {
     await this.studentsService.findOne(studentId);
-    return this.findAll({ studentId });
+    return this.findAll(studentId);
   }
 
-  async findByCourse(courseId: number) {
+  async findByCourse(courseId: number): Promise<Enrollment[]> {
     await this.coursesService.findOne(courseId);
-    return this.findAll({ courseId });
+    return this.findAll(undefined, courseId);
   }
 
-  async remove(id: number) {
+  async remove(id: number): Promise<Enrollment> {
     const enrollment = await this.enrollmentsRepository.findOneBy({ id });
     if (!enrollment) {
       throw new NotFoundException(`Matrícula con ID ${id} no encontrada`);
