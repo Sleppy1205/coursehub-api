@@ -51,7 +51,7 @@ npm run start:prod
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/courses` | Lista todos los cursos (filtro opcional `?level=`) |
+| GET | `/courses` | Lista cursos con filtros, paginación y orden (`level`, `page`, `limit`, `sortBy`, `order`) |
 | GET | `/courses/:id` | Obtiene el detalle de un curso |
 | POST | `/courses` | Crea un nuevo curso |
 | PATCH | `/courses/:id` | Actualiza un curso existente |
@@ -75,6 +75,32 @@ npm run start:prod
 | POST | `/enrollments` | Matricula un estudiante activo en un curso |
 | GET | `/enrollments` | Lista matrículas (filtros opcionales `studentId` y `courseId`) |
 | DELETE | `/enrollments/:id` | Cancela una matrícula existente |
+
+### Listar cursos con filtros y paginación
+
+`GET /courses` usa `page=1`, `limit=10`, `sortBy=id` y `order=ASC` de forma predeterminada. El límite máximo es 50; los campos permitidos para ordenar son `id`, `title` y `level`. Si hay valores iguales en el campo elegido, los resultados se desempatan por `id` ascendente.
+
+```http
+GET /courses?level=beginner&page=2&limit=5&sortBy=title&order=ASC
+```
+
+La respuesta siempre tiene `items` y `meta`; `total` cuenta todos los cursos que cumplen el filtro, no solo los de esta página:
+
+```json
+{
+  "items": [
+    { "id": 8, "title": "NestJS Básico", "level": "beginner" }
+  ],
+  "meta": {
+    "total": 8,
+    "page": 2,
+    "limit": 5,
+    "totalPages": 2
+  }
+}
+```
+
+Valores inválidos como `page=0`, `limit=200`, `sortBy=createdAt` u `order=sideways` responden `400 Bad Request`.
 
 ## Casos de Uso y Respuestas HTTP
 
