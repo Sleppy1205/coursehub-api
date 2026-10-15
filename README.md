@@ -78,10 +78,18 @@ npm run start:prod
 
 ### Buscar matrículas con filtros y paginación
 
-`GET /enrollments` acepta `search` (coincidencia parcial y sin distinguir mayúsculas en el nombre del estudiante o título del curso), `studentId`, `courseId`, `activeOnly=true`, `page` y `limit`. La página predeterminada es 1 y el límite predeterminado es 10, con máximo de 50. Los datos de estudiante y curso se incluyen en cada matrícula.
+`GET /enrollments` acepta `search` (coincidencia parcial y sin distinguir mayúsculas en el nombre del estudiante o título del curso), `studentId`, `courseId`, `activeOnly=true|false`, `page` y `limit`. La página predeterminada es 1 y el límite predeterminado es 10, con máximo de 50. Los IDs deben ser enteros positivos dentro del rango de PostgreSQL. Los datos de estudiante y curso se incluyen en cada matrícula. La respuesta incluye `items` y `meta` (`total`, `page`, `limit` y `totalPages`); una página sin resultados responde `200` con `items: []`.
 
 ```http
 GET /enrollments?search=nest&activeOnly=true&page=1&limit=5
+```
+
+Otros ejemplos:
+
+```http
+GET /enrollments?studentId=1&courseId=2
+GET /enrollments?search=ana&page=2&limit=10
+GET /enrollments?search=sin-coincidencias&page=1&limit=5
 ```
 
 ```json
@@ -101,11 +109,11 @@ GET /enrollments?search=nest&activeOnly=true&page=1&limit=5
       "course": { "id": 2, "title": "NestJS Básico", "level": "beginner" }
     }
   ],
-  "meta": { "total": 1, "page": 1, "limit": 5 }
+  "meta": { "total": 1, "page": 1, "limit": 5, "totalPages": 1 }
 }
 ```
 
-La búsqueda se envía como parámetro de consulta, no se concatena en SQL. Una búsqueda sin coincidencias responde `200` con `items: []` y `total: 0`.
+La búsqueda se envía como parámetro del `QueryBuilder` (`:search`), no se concatena en SQL. Una búsqueda sin coincidencias responde `200` con `items: []` y metadatos en cero.
 
 ### Listar cursos con filtros y paginación
 
@@ -113,6 +121,15 @@ La búsqueda se envía como parámetro de consulta, no se concatena en SQL. Una 
 
 ```http
 GET /courses?level=beginner&page=2&limit=5&sortBy=title&order=ASC
+```
+
+Otros ejemplos:
+
+```http
+GET /courses
+GET /courses?page=1&limit=5&sortBy=title&order=ASC
+GET /courses?page=2&limit=5&sortBy=title&order=ASC
+GET /courses?level=beginner&page=1&limit=5
 ```
 
 La respuesta siempre tiene `items` y `meta`; `total` cuenta todos los cursos que cumplen el filtro, no solo los de esta página:
@@ -132,6 +149,10 @@ La respuesta siempre tiene `items` y `meta`; `total` cuenta todos los cursos que
 ```
 
 Valores inválidos como `page=0`, `limit=200`, `sortBy=createdAt` u `order=sideways` responden `400 Bad Request`.
+
+### Demostración práctica
+
+La colección [coursehub-demo.http](./requests/coursehub-demo.http) contiene seis solicitudes para crear cursos de demostración y consultas consecutivas de páginas, filtro por nivel, búsqueda de matrículas, combinación con estudiante activo y paginación, parámetro inválido y búsqueda sin coincidencias. Ejecútala con una extensión compatible con archivos `.http`; configura `studentId`, `courseId` y `searchTerm` con una matrícula existente asociada a un estudiante activo. Las páginas consecutivas usan idénticos `sortBy` y `order`; compara los IDs para comprobar que no se repiten.
 
 ## Casos de Uso y Respuestas HTTP
 

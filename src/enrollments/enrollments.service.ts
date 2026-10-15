@@ -98,6 +98,7 @@ export class EnrollmentsService {
         total,
         page: query.page,
         limit: query.limit,
+        totalPages: Math.ceil(total / query.limit),
       },
     };
   }

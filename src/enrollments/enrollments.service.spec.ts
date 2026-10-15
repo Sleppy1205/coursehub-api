@@ -103,7 +103,7 @@ describe('EnrollmentsService', () => {
       }),
     ).resolves.toEqual({
       items,
-      meta: { total: 12, page: 2, limit: 5 },
+      meta: { total: 12, page: 2, limit: 5, totalPages: 3 },
     });
 
     expect(enrollmentsRepository.createQueryBuilder).toHaveBeenCalledWith('enrollment');
@@ -143,7 +143,7 @@ describe('EnrollmentsService', () => {
 
     await expect(service.findAll({ page: 1, limit: 10 })).resolves.toEqual({
       items: [],
-      meta: { total: 0, page: 1, limit: 10 },
+      meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
     });
     expect(queryBuilder.andWhere).not.toHaveBeenCalled();
     expect(queryBuilder.take).toHaveBeenCalledWith(10);

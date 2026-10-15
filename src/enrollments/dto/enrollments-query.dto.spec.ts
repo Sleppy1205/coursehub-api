@@ -29,7 +29,9 @@ describe('EnrollmentsQueryDto', () => {
 
   it.each([
     { studentId: '0' },
+    { studentId: '2147483648' },
     { courseId: 'not-a-number' },
+    { courseId: '1.5' },
     { activeOnly: 'yes' },
     { page: '0' },
     { limit: '51' },

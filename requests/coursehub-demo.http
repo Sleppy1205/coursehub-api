@@ -1,0 +1,79 @@
+@baseUrl = http://localhost:3000
+@studentId = 1
+@courseId = 1
+@searchTerm = ana
+
+### 1. Crear cursos de demostración (ejecuta las seis solicitudes)
+POST {{baseUrl}}/courses
+Content-Type: application/json
+
+{
+  "title": "Curso demo paginación A",
+  "level": "beginner"
+}
+
+###
+POST {{baseUrl}}/courses
+Content-Type: application/json
+
+{
+  "title": "Curso demo paginación B",
+  "level": "intermediate"
+}
+
+###
+POST {{baseUrl}}/courses
+Content-Type: application/json
+
+{
+  "title": "Curso demo paginación C",
+  "level": "beginner"
+}
+
+###
+POST {{baseUrl}}/courses
+Content-Type: application/json
+
+{
+  "title": "Curso demo paginación D",
+  "level": "advanced"
+}
+
+###
+POST {{baseUrl}}/courses
+Content-Type: application/json
+
+{
+  "title": "Curso demo paginación E",
+  "level": "beginner"
+}
+
+###
+POST {{baseUrl}}/courses
+Content-Type: application/json
+
+{
+  "title": "Curso demo paginación F",
+  "level": "intermediate"
+}
+
+### 2. Página 1; anota los IDs devueltos
+GET {{baseUrl}}/courses?page=1&limit=3&sortBy=id&order=ASC
+
+### 2. Página 2; mismos parámetros de orden, IDs distintos de la página 1
+GET {{baseUrl}}/courses?page=2&limit=3&sortBy=id&order=ASC
+
+### 3. Filtrar por nivel y revisar total y totalPages
+GET {{baseUrl}}/courses?level=beginner&page=1&limit=2&sortBy=title&order=ASC
+
+### 4. Buscar por parte del nombre del estudiante o título del curso
+GET {{baseUrl}}/enrollments?search={{searchTerm}}&courseId={{courseId}}&page=1&limit=5
+
+### 5. Combinar búsqueda, estudiante activo y paginación
+GET {{baseUrl}}/enrollments?search={{searchTerm}}&studentId={{studentId}}&activeOnly=true&page=1&limit=5
+
+### 6. Parámetro inválido; se espera 400 Bad Request
+GET {{baseUrl}}/courses?page=0&limit=5
+
+### 7. Sin coincidencias; se espera 200 con items vacío y metadatos en cero
+GET {{baseUrl}}/enrollments?search=sin-coincidencias-{{studentId}}&page=1&limit=5
