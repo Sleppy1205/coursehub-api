@@ -12,9 +12,9 @@ CourseHub API integra los módulos de **Courses**, **Students** y **Enrollments*
 
 ## Requisitos Previos
 
-* Node.js v18+
-* PostgreSQL v14+
-* npm o yarn
+* Node.js v20 o superior ([descargas oficiales](https://nodejs.org/en/download/)); verifica con `node --version`.
+* PostgreSQL v14 o superior ([instaladores oficiales](https://www.postgresql.org/download/)); verifica con `psql --version`.
+* npm (incluido con Node.js) o yarn.
 
 ## Variables de Entorno
 
@@ -60,6 +60,46 @@ npm run start:dev
 # 3. Compilar para producción
 npm run build
 npm run start:prod
+```
+
+## TypeORM por ambiente
+
+La conexión PostgreSQL se construye con `ConfigService` y las variables validadas: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` y `DB_NAME`. Las entidades se cargan mediante `autoLoadEntities` a partir de `TypeOrmModule.forFeature` en los módulos de cursos, estudiantes y matrículas.
+
+La sincronización automática del esquema se activa únicamente con `NODE_ENV=development`. En `production` y `test` se mantiene desactivada; no se ejecutan migraciones automáticamente en esta etapa. Para producción, configura las variables en el entorno seguro del servicio de despliegue y planifica migraciones revisadas antes de cambiar el esquema. Nunca copies el `.env` local a producción ni compartas sus secretos.
+
+Para comprobar la política sin desplegar y sin usar una base ajena, conserva las credenciales de tu base local en `.env` y, en PowerShell, inicia una instancia de prueba en otro puerto:
+
+```powershell
+$env:NODE_ENV = 'production'
+$env:PORT = '3001'
+npm run start:dev
+```
+
+La conexión sigue apuntando a la base local indicada por `.env`, pero `synchronize` queda desactivado porque `NODE_ENV` del proceso prevalece sobre el archivo. Detén el servidor con `Ctrl+C` y restaura las variables temporales:
+
+```powershell
+Remove-Item Env:NODE_ENV
+Remove-Item Env:PORT
+```
+
+Para volver al modo de desarrollo, ejecuta `npm run start:dev` sin sobrescribir `NODE_ENV` (el valor de `.env.example` es `development`).
+
+## Lista de comprobación de Etapa 2
+
+| Aspecto | Verificación |
+| --- | --- |
+| Relaciones | `POST /enrollments` acepta una matrícula válida, rechaza duplicados y no permite matricular estudiantes inactivos. |
+| Consultas | `GET /courses?page=1&limit=5&sortBy=id&order=ASC` pagina cursos; `GET /enrollments?search=ana&activeOnly=true&page=1&limit=5` combina búsqueda, estado y paginación. |
+| Configuración | Host, puerto, base, usuario y contraseña se leen de `ConfigService`; no están codificados en TypeScript. |
+| Ambientes | Las pruebas de `database.config.spec.ts` comprueban sincronización en desarrollo y que está desactivada en producción y pruebas. |
+| Reproducibilidad y seguridad | `.env.example` se puede copiar a `.env`; `.env` está ignorado y no se debe entregar ni compartir. |
+
+Ejecuta las verificaciones automatizadas relevantes con:
+
+```bash
+npm test -- src/config/database.config.spec.ts src/config/env.validation.spec.ts src/courses/courses.service.spec.ts src/enrollments/enrollments.service.spec.ts
+npm run build
 ```
 
 ## Endpoints Principales

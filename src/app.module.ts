@@ -6,10 +6,8 @@ import { AppService } from './app.service.js';
 import { CoursesModule } from './courses/courses.module.js';
 import { StudentsModule } from './students/students.module.js';
 import { EnrollmentsModule } from './enrollments/enrollments.module.js';
-import { Course } from './courses/entities/course.entity.js';
-import { Student } from './students/entities/student.entity.js';
-import { Enrollment } from './enrollments/entities/enrollment.entity.js';
 import { validateEnvironment } from './config/env.validation.js';
+import { createDatabaseOptions } from './config/database.config.js';
 
 @Module({
   imports: [
@@ -20,16 +18,7 @@ import { validateEnvironment } from './config/env.validation.js';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.getOrThrow<string>('DB_HOST'),
-        port: configService.getOrThrow<number>('DB_PORT'),
-        username: configService.getOrThrow<string>('DB_USER'),
-        password: configService.getOrThrow<string>('DB_PASSWORD'),
-        database: configService.getOrThrow<string>('DB_NAME'),
-        entities: [Course, Student, Enrollment],
-        synchronize: true,
-      }),
+      useFactory: createDatabaseOptions,
     }),
     CoursesModule,
     StudentsModule,
