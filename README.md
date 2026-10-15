@@ -18,18 +18,35 @@ CourseHub API integra los módulos de **Courses**, **Students** y **Enrollments*
 
 ## Variables de Entorno
 
-Copia el archivo `.env.example` a `.env` en la raíz del proyecto y configura tus credenciales de PostgreSQL:
+Copia `.env.example` a `.env` en la raíz del proyecto y configura tus credenciales locales. En PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
 
 ```env
+NODE_ENV=development
 PORT=3000
 DB_HOST=localhost
 DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=tu_contraseña_aqui
+DB_USER=postgres
+DB_PASSWORD=replace-with-your-local-password
 DB_NAME=coursehub
 ```
 
-> **Nota:** El archivo `.env` está excluido del control de versiones mediante `.gitignore` por seguridad.
+`NODE_ENV` acepta `development`, `test` o `production` (predeterminado: `development`). `PORT` (3000) y `DB_PORT` (5432) deben ser puertos válidos. `DB_HOST`, `DB_NAME`, un usuario (`DB_USER`) y `DB_PASSWORD` son obligatorios; para compatibilidad, `DB_USERNAME` sigue aceptándose si no se define `DB_USER`. Se permite contraseña vacía fuera de producción; en producción debe ser no vacía. La aplicación valida estas variables antes de abrir la conexión y nombra los valores faltantes o inválidos en el error de arranque.
+
+> **Seguridad:** `.env` está excluido del control de versiones mediante `.gitignore`. El archivo versionado `.env.example` solo contiene valores de ejemplo; reemplaza la contraseña ficticia en tu `.env` local y nunca publiques credenciales reales.
+
+Para comprobar el fallo temprano sin modificar archivos, en PowerShell define temporalmente un valor inválido y luego quítalo:
+
+```powershell
+$env:DB_PORT = 'not-a-number'
+npm run start:dev
+Remove-Item Env:DB_PORT
+```
+
+Para comprobar un puerto distinto, configura `PORT=3001` en tu `.env`, inicia la aplicación y verifica, por ejemplo, `GET http://localhost:3001/courses`.
 
 ## Instalación y Ejecución
 

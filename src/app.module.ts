@@ -9,22 +9,24 @@ import { EnrollmentsModule } from './enrollments/enrollments.module.js';
 import { Course } from './courses/entities/course.entity.js';
 import { Student } from './students/entities/student.entity.js';
 import { Enrollment } from './enrollments/entities/enrollment.entity.js';
+import { validateEnvironment } from './config/env.validation.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnvironment,
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: configService.get<string>('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 5432),
-        username: configService.get<string>('DB_USERNAME', 'postgres'),
-        password: String(configService.get<string>('DB_PASSWORD') || ''),
-        database: configService.get<string>('DB_NAME', 'coursehub'),
+        host: configService.getOrThrow<string>('DB_HOST'),
+        port: configService.getOrThrow<number>('DB_PORT'),
+        username: configService.getOrThrow<string>('DB_USER'),
+        password: configService.getOrThrow<string>('DB_PASSWORD'),
+        database: configService.getOrThrow<string>('DB_NAME'),
         entities: [Course, Student, Enrollment],
         synchronize: true,
       }),
