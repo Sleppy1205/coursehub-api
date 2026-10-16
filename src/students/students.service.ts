@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Student } from './entities/student.entity.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
 import { UpdateStudentDto } from './dto/update-student.dto.js';
+import { FilterStudentDto } from './dto/filter-student.dto.js';
 
 @Injectable()
 export class StudentsService {
@@ -12,10 +13,13 @@ export class StudentsService {
     private readonly studentRepository: Repository<Student>,
   ) {}
 
-  async findAll(filters?: any) {
-    const career = typeof filters === 'string' ? filters : filters?.career;
+  async findAll(filters: FilterStudentDto) {
     return this.studentRepository.find({
-      where: career ? { career } : {},
+      where: {
+        ...(filters.career !== undefined && { career: filters.career }),
+        ...(filters.semester !== undefined && { semester: filters.semester }),
+        ...(filters.isActive !== undefined && { isActive: filters.isActive }),
+      },
     });
   }
 

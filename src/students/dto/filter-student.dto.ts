@@ -1,5 +1,5 @@
 import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class FilterStudentDto {
   @IsOptional()
@@ -7,14 +7,18 @@ export class FilterStudentDto {
   career?: string;
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value, 10))
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(10)
   semester?: number;
 
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   isActive?: boolean;
 }

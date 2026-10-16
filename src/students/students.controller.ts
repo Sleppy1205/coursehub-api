@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestj
 import { StudentsService } from './students.service.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
 import { UpdateStudentDto } from './dto/update-student.dto.js';
+import { FilterStudentDto } from './dto/filter-student.dto.js';
 
 @Controller('students')
 export class StudentsController {
@@ -13,7 +14,7 @@ export class StudentsController {
   }
 
   @Get()
-  findAll(@Query() filters: any) {
+  findAll(@Query() filters: FilterStudentDto) {
     return this.studentsService.findAll(filters);
   }
 

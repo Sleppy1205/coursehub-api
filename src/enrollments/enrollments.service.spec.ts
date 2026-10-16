@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Course } from '../courses/entities/course.entity.js';
@@ -74,6 +75,26 @@ describe('EnrollmentsService', () => {
       BadRequestException,
     );
     expect(coursesRepository.findOneBy).not.toHaveBeenCalled();
+    expect(enrollmentsRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing student', async () => {
+    studentsRepository.findOneBy.mockResolvedValue(null);
+
+    await expect(service.create({ studentId: 1, courseId: 2 })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(coursesRepository.findOneBy).not.toHaveBeenCalled();
+    expect(enrollmentsRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing course', async () => {
+    studentsRepository.findOneBy.mockResolvedValue({ id: 1, isActive: true });
+    coursesRepository.findOneBy.mockResolvedValue(null);
+
+    await expect(service.create({ studentId: 1, courseId: 2 })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
     expect(enrollmentsRepository.save).not.toHaveBeenCalled();
   });
 

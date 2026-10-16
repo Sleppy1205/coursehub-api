@@ -98,9 +98,11 @@ Para volver al modo de desarrollo, ejecuta `npm run start:dev` sin sobrescribir 
 Ejecuta las verificaciones automatizadas relevantes con:
 
 ```bash
-npm test -- src/config/database.config.spec.ts src/config/env.validation.spec.ts src/courses/courses.service.spec.ts src/enrollments/enrollments.service.spec.ts
+npm test -- src/config/ src/courses/ src/enrollments/ src/students/
 npm run build
 ```
+
+La colección [coursehub-demo.http](./requests/coursehub-demo.http) contiene la secuencia integradora, incluidas solicitudes de creación de cursos y estudiantes, matrícula, consulta después de reiniciar, duplicado, estudiante inactivo, paginación, búsqueda combinada y validación `400`. Antes de repetirla, cambia `demoTag` a un valor único y actualiza `courseId`, `activeStudentId` e `inactiveStudentId` con los IDs devueltos en las respuestas de creación. Las solicitudes de creación deben ejecutarse individualmente; después de crear cada estudiante, copia su ID a la variable correspondiente antes de continuar.
 
 ## Endpoints Principales
 
@@ -118,7 +120,7 @@ npm run build
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/students` | Lista estudiantes (filtro opcional `?career=`) |
+| GET | `/students` | Lista estudiantes (filtros opcionales `career`, `semester` e `isActive`) |
 | GET | `/students/:id` | Obtiene un estudiante por ID |
 | POST | `/students` | Crea un estudiante (valida correo único) |
 | PATCH | `/students/:id` | Actualiza un estudiante |

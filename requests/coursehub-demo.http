@@ -1,14 +1,17 @@
 @baseUrl = http://localhost:3000
-@studentId = 1
+@demoTag = et2-ajusta-antes-de-repetir
 @courseId = 1
-@searchTerm = ana
+@activeStudentId = 1
+@inactiveStudentId = 2
 
-### 1. Crear cursos de demostración (ejecuta las seis solicitudes)
+### 1. Crear seis cursos de demostración (ejecuta cada solicitud una vez)
+### Curso A: usa su id como @courseId para crear la matrícula más adelante
+# @name createDemoCourseA
 POST {{baseUrl}}/courses
 Content-Type: application/json
 
 {
-  "title": "Curso demo paginación A",
+  "title": "Etapa 2 {{demoTag}} Curso A",
   "level": "beginner"
 }
 
@@ -17,7 +20,7 @@ POST {{baseUrl}}/courses
 Content-Type: application/json
 
 {
-  "title": "Curso demo paginación B",
+  "title": "Etapa 2 {{demoTag}} Curso B",
   "level": "intermediate"
 }
 
@@ -26,7 +29,7 @@ POST {{baseUrl}}/courses
 Content-Type: application/json
 
 {
-  "title": "Curso demo paginación C",
+  "title": "Etapa 2 {{demoTag}} Curso C",
   "level": "beginner"
 }
 
@@ -35,7 +38,7 @@ POST {{baseUrl}}/courses
 Content-Type: application/json
 
 {
-  "title": "Curso demo paginación D",
+  "title": "Etapa 2 {{demoTag}} Curso D",
   "level": "advanced"
 }
 
@@ -44,7 +47,7 @@ POST {{baseUrl}}/courses
 Content-Type: application/json
 
 {
-  "title": "Curso demo paginación E",
+  "title": "Etapa 2 {{demoTag}} Curso E",
   "level": "beginner"
 }
 
@@ -53,27 +56,87 @@ POST {{baseUrl}}/courses
 Content-Type: application/json
 
 {
-  "title": "Curso demo paginación F",
+  "title": "Etapa 2 {{demoTag}} Curso F",
   "level": "intermediate"
 }
 
-### 2. Página 1; anota los IDs devueltos
+### 2. Crear estudiante activo y anotar el id como @activeStudentId
+# @name createActiveStudent
+POST {{baseUrl}}/students
+Content-Type: application/json
+
+{
+  "name": "Estudiante Activo {{demoTag}}",
+  "email": "{{demoTag}}-activo@example.test",
+  "age": 21,
+  "career": "Software Engineering",
+  "semester": 4
+}
+
+### Crear otro estudiante; desactivarlo con la solicitud siguiente
+# @name createInactiveStudent
+POST {{baseUrl}}/students
+Content-Type: application/json
+
+{
+  "name": "Estudiante Inactivo {{demoTag}}",
+  "email": "{{demoTag}}-inactivo@example.test",
+  "age": 22,
+  "career": "Software Engineering",
+  "semester": 5
+}
+
+### Anota el id del estudiante anterior como @inactiveStudentId y ejecútala
+PATCH {{baseUrl}}/students/{{inactiveStudentId}}/toggle-status
+
+### Registrar una matrícula válida; anota el id de Curso A y Estudiante Activo
+# @name createEnrollment
+POST {{baseUrl}}/enrollments
+Content-Type: application/json
+
+{
+  "studentId": {{activeStudentId}},
+  "courseId": {{courseId}}
+}
+
+### 3. Reinicia la API (detén start:dev y vuelve a iniciarlo); la fila debe persistir
+GET {{baseUrl}}/enrollments?studentId={{activeStudentId}}&courseId={{courseId}}&page=1&limit=5
+
+### 4. Misma pareja estudiante-curso; se espera 409 Conflict
+POST {{baseUrl}}/enrollments
+Content-Type: application/json
+
+{
+  "studentId": {{activeStudentId}},
+  "courseId": {{courseId}}
+}
+
+### Estudiante inactivo; se espera 400 Bad Request
+POST {{baseUrl}}/enrollments
+Content-Type: application/json
+
+{
+  "studentId": {{inactiveStudentId}},
+  "courseId": {{courseId}}
+}
+
+### 5. Página 1 de cursos; el orden usa id ASC
 GET {{baseUrl}}/courses?page=1&limit=3&sortBy=id&order=ASC
 
-### 2. Página 2; mismos parámetros de orden, IDs distintos de la página 1
+### Página 2 con el mismo orden; compara IDs, no deben repetirse
 GET {{baseUrl}}/courses?page=2&limit=3&sortBy=id&order=ASC
 
-### 3. Filtrar por nivel y revisar total y totalPages
+### Filtro de nivel y metadatos
 GET {{baseUrl}}/courses?level=beginner&page=1&limit=2&sortBy=title&order=ASC
 
-### 4. Buscar por parte del nombre del estudiante o título del curso
-GET {{baseUrl}}/enrollments?search={{searchTerm}}&courseId={{courseId}}&page=1&limit=5
+### 6. Búsqueda por nombre del estudiante, curso específico y página
+GET {{baseUrl}}/enrollments?search={{demoTag}}&courseId={{courseId}}&page=1&limit=5
 
-### 5. Combinar búsqueda, estudiante activo y paginación
-GET {{baseUrl}}/enrollments?search={{searchTerm}}&studentId={{studentId}}&activeOnly=true&page=1&limit=5
+### Combinar búsqueda, estudiante activo y paginación
+GET {{baseUrl}}/enrollments?search={{demoTag}}&studentId={{activeStudentId}}&activeOnly=true&page=1&limit=5
 
-### 6. Parámetro inválido; se espera 400 Bad Request
+### 7. Parámetro inválido; se espera 400 Bad Request
 GET {{baseUrl}}/courses?page=0&limit=5
 
-### 7. Sin coincidencias; se espera 200 con items vacío y metadatos en cero
-GET {{baseUrl}}/enrollments?search=sin-coincidencias-{{studentId}}&page=1&limit=5
+### Búsqueda sin resultados; se espera 200, items vacío y totalPages 0
+GET {{baseUrl}}/enrollments?search=sin-coincidencias-{{demoTag}}&page=1&limit=5
