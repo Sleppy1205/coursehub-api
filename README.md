@@ -62,6 +62,39 @@ npm run build
 npm run start:prod
 ```
 
+## Autenticación y registro seguro
+
+La API incluye un flujo inicial de registro de usuarios que guarda la contraseña como hash usando `bcrypt` antes de persistirla. Nunca se almacena la contraseña original en PostgreSQL.
+
+### `POST /auth/register`
+
+```http
+POST /auth/register
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "miPasswordSegura123"
+}
+```
+
+Respuesta exitosa:
+
+```json
+{
+  "id": 1,
+  "email": "ana@example.com",
+  "createdAt": "2026-10-19T12:00:00.000Z"
+}
+```
+
+Reglas:
+
+- El correo se normaliza a minúsculas y se valida con `@IsEmail()`.
+- La contraseña debe tener entre 8 y 72 caracteres.
+- Si el correo ya existe, la API responde `409 Conflict`.
+- El valor `passwordHash` se guarda en la base, no la contraseña en texto plano.
+
 ## TypeORM por ambiente
 
 La conexión PostgreSQL se construye con `ConfigService` y las variables validadas: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` y `DB_NAME`. Las entidades se cargan mediante `autoLoadEntities` a partir de `TypeOrmModule.forFeature` en los módulos de cursos, estudiantes y matrículas.
