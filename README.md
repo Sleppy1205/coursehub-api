@@ -78,7 +78,7 @@ Content-Type: application/json
 }
 ```
 
-Respuesta exitosa:
+Respuesta exitosa (`201 Created`):
 
 ```json
 {
@@ -91,8 +91,9 @@ Respuesta exitosa:
 Reglas:
 
 - El correo se normaliza a minúsculas y se valida con `@IsEmail()`.
-- La contraseña debe tener entre 8 y 72 caracteres.
+- La contraseña debe tener al menos 8 caracteres y no superar los 72 bytes que admite bcrypt por operación.
 - Si el correo ya existe, la API responde `409 Conflict`.
+- La base mantiene una restricción única para el correo; si dos registros simultáneos colisionan, PostgreSQL también se traduce a `409 Conflict` sin exponer detalles internos.
 - El valor `passwordHash` se guarda en la base, no la contraseña en texto plano.
 
 ### `POST /auth/login`
@@ -107,7 +108,7 @@ Content-Type: application/json
 }
 ```
 
-Si las credenciales son correctas, responde `200 OK` con `id`, `email` y `createdAt`. Si el correo no está registrado o la contraseña no coincide, ambos casos responden `401 Unauthorized` con el mismo mensaje (`Invalid credentials`). El email debe tener formato válido y la contraseña debe tener entre 8 y 72 caracteres; un cuerpo inválido responde `400 Bad Request`. El endpoint solo comprueba credenciales: no crea una sesión ni emite JWT, y todavía no decide qué acciones puede realizar el usuario.
+Si las credenciales son correctas, responde `200 OK` con `id`, `email` y `createdAt`. Si el correo no está registrado o la contraseña no coincide, ambos casos responden `401 Unauthorized` con el mismo mensaje (`Invalid credentials`). El email debe tener formato válido y la contraseña debe tener al menos 8 caracteres y no superar los 72 bytes que admite bcrypt; un cuerpo inválido responde `400 Bad Request`. El endpoint solo comprueba credenciales: no crea una sesión ni emite JWT, y todavía no decide qué acciones puede realizar el usuario.
 
 La consulta de inicio de sesión carga `passwordHash` explícitamente solo para comparar con `bcrypt.compare`. Las consultas normales no seleccionan ese campo (`select: false`), y tanto el registro como el login construyen una respuesta segura en vez de devolver la entidad.
 

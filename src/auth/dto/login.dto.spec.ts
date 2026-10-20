@@ -25,4 +25,15 @@ describe('LoginDto', () => {
       expect.arrayContaining(['email', 'password']),
     );
   });
+
+  it('rejects a password exceeding bcrypt’s 72-byte input limit', async () => {
+    const dto = plainToInstance(LoginDto, {
+      email: 'ana@example.com',
+      password: '😀'.repeat(19),
+    });
+
+    const errors = await validate(dto);
+
+    expect(errors.map((error) => error.property)).toContain('password');
+  });
 });

@@ -152,6 +152,15 @@ Content-Type: application/json
   "password": "{{authPassword}}"
 }
 
+### Mismo correo con mayúsculas; debe responder 409 Conflict
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "Sesion16@Example.Test",
+  "password": "{{authPassword}}"
+}
+
 ### Login correcto: debe responder 200 con datos seguros, sin passwordHash
 POST {{baseUrl}}/auth/login
 Content-Type: application/json

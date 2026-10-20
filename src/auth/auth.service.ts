@@ -4,9 +4,24 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { User } from '../users/entities/user.entity.js';
 import { UsersService } from '../users/users.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
+
+function isPostgresUniqueViolation(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || !('driverError' in error)) {
+    return false;
+  }
+
+  const { driverError } = error;
+  return (
+    typeof driverError === 'object' &&
+    driverError !== null &&
+    'code' in driverError &&
+    driverError.code === '23505'
+  );
+}
 
 @Injectable()
 export class AuthService {
@@ -21,10 +36,18 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(registerDto.password, 12);
-    const user = await this.usersService.create({
-      email: normalizedEmail,
-      passwordHash,
-    });
+    let user: User;
+    try {
+      user = await this.usersService.create({
+        email: normalizedEmail,
+        passwordHash,
+      });
+    } catch (error) {
+      if (isPostgresUniqueViolation(error)) {
+        throw new ConflictException('El correo electrónico ya está registrado');
+      }
+      throw error;
+    }
 
     return {
       id: user.id,

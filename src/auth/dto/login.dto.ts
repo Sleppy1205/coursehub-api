@@ -1,5 +1,11 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsByteLength,
+  IsEmail,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class LoginDto {
   @Transform(({ value }) => {
@@ -15,5 +21,6 @@ export class LoginDto {
   @IsString()
   @MinLength(8)
   @MaxLength(72)
+  @IsByteLength(8, 72)
   password: string;
 }

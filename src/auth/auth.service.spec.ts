@@ -66,6 +66,40 @@ describe('AuthService', () => {
     ).rejects.toThrow('El correo electrónico ya está registrado');
   });
 
+  it('maps a PostgreSQL unique constraint race to a conflict without exposing database details', async () => {
+    usersService.findByEmail.mockResolvedValue(null);
+    usersService.create.mockRejectedValue({
+      driverError: {
+        code: '23505',
+        constraint: 'users_email_key',
+        detail: 'Key (email)=(ana@example.com) already exists.',
+      },
+    });
+
+    await expect(
+      service.register({
+        email: 'ana@example.com',
+        password: 'superSecret123',
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: 'El correo electrónico ya está registrado',
+    });
+  });
+
+  it('propagates database errors that are not unique constraint violations', async () => {
+    const databaseError = new Error('Database unavailable');
+    usersService.findByEmail.mockResolvedValue(null);
+    usersService.create.mockRejectedValue(databaseError);
+
+    await expect(
+      service.register({
+        email: 'ana@example.com',
+        password: 'superSecret123',
+      }),
+    ).rejects.toBe(databaseError);
+  });
+
   it('authenticates with the persisted hash and returns only safe user fields', async () => {
     const createdAt = new Date('2026-10-19T12:00:00.000Z');
     usersService.findByEmailWithPassword.mockResolvedValue({
