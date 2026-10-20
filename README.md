@@ -64,7 +64,7 @@ npm run start:prod
 
 ## Autenticación y registro seguro
 
-La API incluye un flujo inicial de registro de usuarios que guarda la contraseña como hash usando `bcrypt` antes de persistirla. Nunca se almacena la contraseña original en PostgreSQL.
+La API permite registrar cuentas y comprobar credenciales. La contraseña se guarda como hash de `bcrypt`; nunca se almacena ni se devuelve en texto plano.
 
 ### `POST /auth/register`
 
@@ -94,6 +94,24 @@ Reglas:
 - La contraseña debe tener entre 8 y 72 caracteres.
 - Si el correo ya existe, la API responde `409 Conflict`.
 - El valor `passwordHash` se guarda en la base, no la contraseña en texto plano.
+
+### `POST /auth/login`
+
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@example.com",
+  "password": "miPasswordSegura123"
+}
+```
+
+Si las credenciales son correctas, responde `200 OK` con `id`, `email` y `createdAt`. Si el correo no está registrado o la contraseña no coincide, ambos casos responden `401 Unauthorized` con el mismo mensaje (`Invalid credentials`). El email debe tener formato válido y la contraseña debe tener entre 8 y 72 caracteres; un cuerpo inválido responde `400 Bad Request`. El endpoint solo comprueba credenciales: no crea una sesión ni emite JWT, y todavía no decide qué acciones puede realizar el usuario.
+
+La consulta de inicio de sesión carga `passwordHash` explícitamente solo para comparar con `bcrypt.compare`. Las consultas normales no seleccionan ese campo (`select: false`), y tanto el registro como el login construyen una respuesta segura en vez de devolver la entidad.
+
+Para probar localmente, primero registra una cuenta de práctica con `POST /auth/register` y usa esos mismos datos en `/auth/login`. No guardes contraseñas reales en colecciones HTTP compartidas.
 
 ## TypeORM por ambiente
 

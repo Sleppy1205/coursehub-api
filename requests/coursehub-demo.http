@@ -1,5 +1,7 @@
 @baseUrl = http://localhost:3000
 @demoTag = et2-ajusta-antes-de-repetir
+@authEmail = sesion16@example.test
+@authPassword = practica-local-2026
 @courseId = 1
 @activeStudentId = 1
 @inactiveStudentId = 2
@@ -140,3 +142,48 @@ GET {{baseUrl}}/courses?page=0&limit=5
 
 ### Búsqueda sin resultados; se espera 200, items vacío y totalPages 0
 GET {{baseUrl}}/enrollments?search=sin-coincidencias-{{demoTag}}&page=1&limit=5
+
+### Sesión 16: registra esta cuenta local una sola vez; usa solo credenciales ficticias
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{authEmail}}",
+  "password": "{{authPassword}}"
+}
+
+### Login correcto: debe responder 200 con datos seguros, sin passwordHash
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{authEmail}}",
+  "password": "{{authPassword}}"
+}
+
+### Contraseña incorrecta: debe responder 401 Invalid credentials
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{authEmail}}",
+  "password": "otraPassword123"
+}
+
+### Email inexistente: mismo 401 y mensaje que una contraseña incorrecta
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "no-registrado@example.test",
+  "password": "{{authPassword}}"
+}
+
+### Formato inválido: debe responder 400
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "correo-invalido",
+  "password": "corta"
+}

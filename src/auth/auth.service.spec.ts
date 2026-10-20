@@ -1,4 +1,7 @@
-import { ConflictException } from '@nestjs/common';
+import {
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service.js';
@@ -8,6 +11,7 @@ describe('AuthService', () => {
   let service: AuthService;
   const usersService = {
     findByEmail: vi.fn(),
+    findByEmailWithPassword: vi.fn(),
     create: vi.fn(),
   };
 
@@ -60,5 +64,52 @@ describe('AuthService', () => {
     await expect(
       service.register({ email: 'ana@example.com', password: 'superSecret123' }),
     ).rejects.toThrow('El correo electrónico ya está registrado');
+  });
+
+  it('authenticates with the persisted hash and returns only safe user fields', async () => {
+    const createdAt = new Date('2026-10-19T12:00:00.000Z');
+    usersService.findByEmailWithPassword.mockResolvedValue({
+      id: 3,
+      email: 'ana@example.com',
+      passwordHash: await bcrypt.hash('superSecret123', 4),
+      createdAt,
+    });
+
+    await expect(
+      service.login({
+        email: ' Ana@Example.com ',
+        password: 'superSecret123',
+      }),
+    ).resolves.toEqual({
+      id: 3,
+      email: 'ana@example.com',
+      createdAt,
+    });
+    expect(usersService.findByEmailWithPassword).toHaveBeenCalledWith(
+      'ana@example.com',
+    );
+  });
+
+  it('returns the same unauthorized error for an unknown email and a wrong password', async () => {
+    const loginDto = {
+      email: 'ana@example.com',
+      password: 'superSecret123',
+    };
+    usersService.findByEmailWithPassword.mockResolvedValue(null);
+
+    const unknownEmailError = await service.login(loginDto).catch((error) => error);
+
+    usersService.findByEmailWithPassword.mockResolvedValue({
+      id: 3,
+      email: 'ana@example.com',
+      passwordHash: await bcrypt.hash('differentPassword', 4),
+      createdAt: new Date('2026-10-19T12:00:00.000Z'),
+    });
+    const wrongPasswordError = await service.login(loginDto).catch((error) => error);
+
+    expect(unknownEmailError).toBeInstanceOf(UnauthorizedException);
+    expect(wrongPasswordError).toBeInstanceOf(UnauthorizedException);
+    expect(unknownEmailError.message).toBe('Invalid credentials');
+    expect(wrongPasswordError.message).toBe('Invalid credentials');
   });
 });

@@ -14,6 +14,13 @@ export class UsersService {
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository
       .createQueryBuilder('user')
+      .where('LOWER(user.email) = LOWER(:email)', { email })
+      .getOne();
+  }
+
+  async findByEmailWithPassword(email: string): Promise<User | null> {
+    return this.userRepository
+      .createQueryBuilder('user')
       .addSelect('user.passwordHash')
       .where('LOWER(user.email) = LOWER(:email)', { email })
       .getOne();
