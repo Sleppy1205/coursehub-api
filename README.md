@@ -32,9 +32,11 @@ DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=replace-with-your-local-password
 DB_NAME=coursehub
+JWT_SECRET=replace-with-a-long-random-local-secret
+JWT_EXPIRES_IN=15m
 ```
 
-`NODE_ENV` acepta `development`, `test` o `production` (predeterminado: `development`). `PORT` (3000) y `DB_PORT` (5432) deben ser puertos válidos. `DB_HOST`, `DB_NAME`, un usuario (`DB_USER`) y `DB_PASSWORD` son obligatorios; para compatibilidad, `DB_USERNAME` sigue aceptándose si no se define `DB_USER`. Se permite contraseña vacía fuera de producción; en producción debe ser no vacía. La aplicación valida estas variables antes de abrir la conexión y nombra los valores faltantes o inválidos en el error de arranque.
+`NODE_ENV` acepta `development`, `test` o `production` (predeterminado: `development`). `PORT` (3000) y `DB_PORT` (5432) deben ser puertos válidos. `DB_HOST`, `DB_NAME`, un usuario (`DB_USER`) y `DB_PASSWORD` son obligatorios; para compatibilidad, `DB_USERNAME` sigue aceptándose si no se define `DB_USER`. Se permite contraseña vacía fuera de producción; en producción debe ser no vacía. `JWT_SECRET` es obligatorio y debe tener al menos 32 caracteres; genera un valor aleatorio solo para tu `.env` local y no uses el marcador de `.env.example` como secreto. `JWT_EXPIRES_IN` define la duración del token y usa `15m` por defecto. La aplicación valida estas variables antes de abrir la conexión y nombra las variables faltantes o inválidas sin imprimir sus valores.
 
 > **Seguridad:** `.env` está excluido del control de versiones mediante `.gitignore`. El archivo versionado `.env.example` solo contiene valores de ejemplo; reemplaza la contraseña ficticia en tu `.env` local y nunca publiques credenciales reales.
 
@@ -95,6 +97,7 @@ Reglas:
 - Si el correo ya existe, la API responde `409 Conflict`.
 - La base mantiene una restricción única para el correo; si dos registros simultáneos colisionan, PostgreSQL también se traduce a `409 Conflict` sin exponer detalles internos.
 - El valor `passwordHash` se guarda en la base, no la contraseña en texto plano.
+- El entorno requiere `JWT_SECRET` (mínimo 32 caracteres) y `JWT_EXPIRES_IN`, por ejemplo `15m`.
 
 ### `POST /auth/login`
 
@@ -108,11 +111,22 @@ Content-Type: application/json
 }
 ```
 
-Si las credenciales son correctas, responde `200 OK` con `id`, `email` y `createdAt`. Si el correo no está registrado o la contraseña no coincide, ambos casos responden `401 Unauthorized` con el mismo mensaje (`Invalid credentials`). El email debe tener formato válido y la contraseña debe tener al menos 8 caracteres y no superar los 72 bytes que admite bcrypt; un cuerpo inválido responde `400 Bad Request`. El endpoint solo comprueba credenciales: no crea una sesión ni emite JWT, y todavía no decide qué acciones puede realizar el usuario.
+Si las credenciales son correctas, responde `200 OK` con `accessToken` y el usuario seguro (`id`, `email`, `createdAt`). Si el correo no está registrado o la contraseña no coincide, ambos casos responden `401 Unauthorized` con el mismo mensaje (`Invalid credentials`). El email debe tener formato válido y la contraseña debe tener al menos 8 caracteres y no superar los 72 bytes que admite bcrypt; un cuerpo inválido responde `400 Bad Request`. El endpoint solo comprueba credenciales: no crea una sesión ni emite JWT, y todavía no decide qué acciones puede realizar el usuario.
 
-La consulta de inicio de sesión carga `passwordHash` explícitamente solo para comparar con `bcrypt.compare`. Las consultas normales no seleccionan ese campo (`select: false`), y tanto el registro como el login construyen una respuesta segura en vez de devolver la entidad.
+La consulta de inicio de sesión carga `passwordHash` explícitamente solo para comparar con `bcrypt.compare`. Luego se firma un `accessToken` con el payload mínimo `{ sub, email }` y se responde con ese token y el usuario seguro. Las consultas normales no seleccionan ese campo (`select: false`), y tanto el registro como el login construyen una respuesta segura en vez de devolver la entidad.
 
 Para probar localmente, primero registra una cuenta de práctica con `POST /auth/register` y usa esos mismos datos en `/auth/login`. No guardes contraseñas reales en colecciones HTTP compartidas.
+
+### Verificar el token: `GET /auth/me`
+
+La ruta requiere un access token válido en el encabezado `Authorization` con esquema Bearer:
+
+```http
+GET /auth/me
+Authorization: Bearer <accessToken>
+```
+
+Responde con `id` y `email` cuando la firma y expiración son válidas; sin token, con token inválido o expirado responde `401 Unauthorized`. Esta ruta solo verifica la identidad del token y no implementa autorización por roles.
 
 ## TypeORM por ambiente
 

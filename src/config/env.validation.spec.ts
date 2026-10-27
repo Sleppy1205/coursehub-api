@@ -7,6 +7,7 @@ describe('envValidationSchema', () => {
     DB_USER: 'postgres',
     DB_PASSWORD: '',
     NODE_ENV: 'test',
+    JWT_SECRET: 'test-only-secret-with-at-least-32-characters',
   };
 
   it('requires database settings and applies defaults', () => {
@@ -68,8 +69,34 @@ describe('envValidationSchema', () => {
       DB_NAME: 'coursehub',
       DB_USERNAME: 'postgres',
       DB_PASSWORD: '',
+      JWT_SECRET: 'test-only-secret-with-at-least-32-characters',
     });
 
     expect(value.DB_USER).toBe('postgres');
+  });
+
+  it('does not include environment values in validation errors', () => {
+    let validationError: Error | undefined;
+
+    try {
+      validateEnvironment({
+        ...validConfig,
+        DB_PASSWORD: 'must-not-appear-in-errors',
+        JWT_SECRET: undefined,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        validationError = error;
+      }
+    }
+
+    expect(validationError).toBeInstanceOf(Error);
+    expect(validationError?.message).toContain('JWT_SECRET');
+    expect(JSON.stringify(validationError)).not.toContain(
+      'must-not-appear-in-errors',
+    );
+    expect(JSON.stringify(validationError)).not.toContain(
+      'test-only-secret-with-at-least-32-characters',
+    );
   });
 });

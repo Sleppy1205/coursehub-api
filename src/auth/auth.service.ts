@@ -3,11 +3,13 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity.js';
 import { UsersService } from '../users/users.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
+import { JwtPayload } from './types/jwt-payload.type.js';
 
 function isPostgresUniqueViolation(error: unknown): boolean {
   if (typeof error !== 'object' || error === null || !('driverError' in error)) {
@@ -25,7 +27,10 @@ function isPostgresUniqueViolation(error: unknown): boolean {
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   async register(registerDto: RegisterDto) {
     const normalizedEmail = registerDto.email.trim().toLowerCase();
@@ -68,10 +73,18 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return {
-      id: user.id,
+    const payload: JwtPayload = {
+      sub: user.id,
       email: user.email,
-      createdAt: user.createdAt,
+    };
+
+    return {
+      accessToken: await this.jwtService.signAsync(payload),
+      user: {
+        id: user.id,
+        email: user.email,
+        createdAt: user.createdAt,
+      },
     };
   }
 }

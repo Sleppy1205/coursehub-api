@@ -17,6 +17,8 @@ export const envValidationSchema = Joi.object({
     then: Joi.string().min(1).required(),
     otherwise: Joi.string().allow('').required(),
   }),
+  JWT_SECRET: Joi.string().trim().min(32).required(),
+  JWT_EXPIRES_IN: Joi.string().trim().min(1).default('15m'),
 }).or('DB_USER', 'DB_USERNAME');
 
 export function validateEnvironment(
@@ -28,7 +30,14 @@ export function validateEnvironment(
   });
 
   if (error) {
-    throw error;
+    const invalidVariables = error.details
+      .map(({ path, type }) =>
+        type === 'object.missing'
+          ? 'DB_USER or DB_USERNAME is required'
+          : `${path.join('.')} (${type})`,
+      )
+      .join(', ');
+    throw new Error(`Configuración de entorno inválida: ${invalidVariables}`);
   }
 
   if (value.DB_USER === undefined) {

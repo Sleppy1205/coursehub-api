@@ -2,6 +2,7 @@ import {
   ConflictException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service.js';
@@ -14,14 +15,19 @@ describe('AuthService', () => {
     findByEmailWithPassword: vi.fn(),
     create: vi.fn(),
   };
+  const jwtService = {
+    signAsync: vi.fn(),
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    jwtService.signAsync.mockResolvedValue('mocked-jwt-token');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: UsersService, useValue: usersService },
+        { provide: JwtService, useValue: jwtService },
       ],
     }).compile();
 
@@ -100,7 +106,7 @@ describe('AuthService', () => {
     ).rejects.toBe(databaseError);
   });
 
-  it('authenticates with the persisted hash and returns only safe user fields', async () => {
+  it('authenticates with the persisted hash and returns an access token and safe user fields', async () => {
     const createdAt = new Date('2026-10-19T12:00:00.000Z');
     usersService.findByEmailWithPassword.mockResolvedValue({
       id: 3,
@@ -114,14 +120,21 @@ describe('AuthService', () => {
         email: ' Ana@Example.com ',
         password: 'superSecret123',
       }),
-    ).resolves.toEqual({
-      id: 3,
-      email: 'ana@example.com',
-      createdAt,
+    ).resolves.toMatchObject({
+      accessToken: expect.any(String),
+      user: {
+        id: 3,
+        email: 'ana@example.com',
+        createdAt,
+      },
     });
     expect(usersService.findByEmailWithPassword).toHaveBeenCalledWith(
       'ana@example.com',
     );
+    expect(jwtService.signAsync).toHaveBeenCalledWith({
+      sub: 3,
+      email: 'ana@example.com',
+    });
   });
 
   it('returns the same unauthorized error for an unknown email and a wrong password', async () => {

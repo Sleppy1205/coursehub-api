@@ -196,3 +196,7 @@ Content-Type: application/json
   "email": "correo-invalido",
   "password": "corta"
 }
+
+### Sesión 17: copia accessToken de la respuesta exitosa de login
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{accessToken}}
