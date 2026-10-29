@@ -1,67 +1,105 @@
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import {
+  Controller,
+  Get,
+  INestApplication,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtModule, JwtService } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { Test } from '@nestjs/testing';
+import type { Request } from 'express';
+import request from 'supertest';
+import type { App } from 'supertest/types';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { JwtStrategy } from '../strategies/jwt.strategy.js';
+import { AuthenticatedUser } from '../types/jwt-payload.type.js';
+
+const jwtSecret = 'test-secret-with-more-than-thirty-two-characters';
+
+@Controller('protected')
+class ProtectedTestController {
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  getProfile(@Req() req: Request & { user: AuthenticatedUser }) {
+    return req.user;
+  }
+}
 
 describe('JwtAuthGuard', () => {
-  const jwtService = {
-    verifyAsync: vi.fn(),
-  };
-  let guard: JwtAuthGuard;
+  let app: INestApplication<App>;
+  let jwtService: JwtService;
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    guard = new JwtAuthGuard(jwtService as JwtService);
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        PassportModule.register({ defaultStrategy: 'jwt' }),
+        JwtModule.register({
+          secret: jwtSecret,
+          signOptions: { algorithm: 'HS256', expiresIn: '15m' },
+        }),
+      ],
+      controllers: [ProtectedTestController],
+      providers: [
+        JwtAuthGuard,
+        JwtStrategy,
+        {
+          provide: ConfigService,
+          useValue: { getOrThrow: () => jwtSecret },
+        },
+      ],
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    jwtService = moduleRef.get(JwtService);
+    await app.init();
   });
 
-  function createContext(authorization?: string) {
-    const request: {
-      headers: { authorization: string | undefined };
-      user?: { sub: number; email: string };
-    } = {
-      headers: { authorization },
-    };
-    const context = {
-      switchToHttp: () => ({
-        getRequest: () => request,
-      }),
-    };
-
-    return { context, request };
-  }
-
-  it('rejects requests without a bearer token', async () => {
-    const { context } = createContext();
-
-    await expect(
-      guard.canActivate(context as ExecutionContext),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+  afterAll(async () => {
+    await app.close();
   });
 
-  it('verifies a bearer token and attaches the payload to the request', async () => {
-    const payload = { sub: 17, email: 'ana@example.com' };
-    const { context, request } = createContext('Bearer valid-token');
-    jwtService.verifyAsync.mockResolvedValue(payload);
+  it('rejects a request without a token', async () => {
+    await request(app.getHttpServer()).get('/protected').expect(401);
+  });
 
-    await expect(
-      guard.canActivate(context as ExecutionContext),
-    ).resolves.toBe(true);
-
-    expect(jwtService.verifyAsync).toHaveBeenCalledWith('valid-token', {
-      algorithms: ['HS256'],
+  it('rejects an invalid or altered token', async () => {
+    const validToken = await jwtService.signAsync({
+      sub: 17,
+      email: 'ana@example.com',
     });
-    expect(request).toHaveProperty('user', payload);
+    const alteredToken = `${validToken.slice(0, -1)}${validToken.endsWith('a') ? 'b' : 'a'}`;
+
+    await request(app.getHttpServer())
+      .get('/protected')
+      .set('Authorization', `Bearer ${alteredToken}`)
+      .expect(401);
   });
 
-  it('rejects invalid or expired tokens with a generic unauthorized response', async () => {
-    const { context } = createContext('Bearer invalid-token');
-    jwtService.verifyAsync.mockRejectedValue(new Error('signature invalid'));
+  it('rejects an expired token', async () => {
+    const expiredToken = await jwtService.signAsync(
+      { sub: 17, email: 'ana@example.com' },
+      { expiresIn: -1 },
+    );
 
-    await expect(
-      guard.canActivate(context as ExecutionContext),
-    ).rejects.toMatchObject({
-      status: 401,
-      message: 'Invalid or expired token',
+    await request(app.getHttpServer())
+      .get('/protected')
+      .set('Authorization', `Bearer ${expiredToken}`)
+      .expect(401);
+  });
+
+  it('attaches only a safe identity for a valid token', async () => {
+    const token = await jwtService.signAsync({
+      sub: 17,
+      email: 'ana@example.com',
+      passwordHash: 'must-not-be-exposed',
     });
+
+    await request(app.getHttpServer())
+      .get('/protected')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect({ id: 17, email: 'ana@example.com' });
   });
 });

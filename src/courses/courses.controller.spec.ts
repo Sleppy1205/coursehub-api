@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { CoursesController } from './courses.controller.js';
 import { CoursesService } from './courses.service.js';
 
@@ -14,7 +15,10 @@ describe('CoursesController', () => {
           useValue: { findAll: vi.fn() },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: vi.fn(() => true) })
+      .compile();
 
     controller = module.get<CoursesController>(CoursesController);
   });

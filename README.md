@@ -111,7 +111,7 @@ Content-Type: application/json
 }
 ```
 
-Si las credenciales son correctas, responde `200 OK` con `accessToken` y el usuario seguro (`id`, `email`, `createdAt`). Si el correo no está registrado o la contraseña no coincide, ambos casos responden `401 Unauthorized` con el mismo mensaje (`Invalid credentials`). El email debe tener formato válido y la contraseña debe tener al menos 8 caracteres y no superar los 72 bytes que admite bcrypt; un cuerpo inválido responde `400 Bad Request`. El endpoint solo comprueba credenciales: no crea una sesión ni emite JWT, y todavía no decide qué acciones puede realizar el usuario.
+Si las credenciales son correctas, responde `200 OK` con `accessToken` y el usuario seguro (`id`, `email`, `createdAt`). Si el correo no está registrado o la contraseña no coincide, ambos casos responden `401 Unauthorized` con el mismo mensaje (`Invalid credentials`). El email debe tener formato válido y la contraseña debe tener al menos 8 caracteres y no superar los 72 bytes que admite bcrypt; un cuerpo inválido responde `400 Bad Request`. El token es una credencial firmada, no cifrada: no lo compartas ni lo guardes en el repositorio.
 
 La consulta de inicio de sesión carga `passwordHash` explícitamente solo para comparar con `bcrypt.compare`. Luego se firma un `accessToken` con el payload mínimo `{ sub, email }` y se responde con ese token y el usuario seguro. Las consultas normales no seleccionan ese campo (`select: false`), y tanto el registro como el login construyen una respuesta segura en vez de devolver la entidad.
 
@@ -126,7 +126,34 @@ GET /auth/me
 Authorization: Bearer <accessToken>
 ```
 
-Responde con `id` y `email` cuando la firma y expiración son válidas; sin token, con token inválido o expirado responde `401 Unauthorized`. Esta ruta solo verifica la identidad del token y no implementa autorización por roles.
+Responde con `id` y `email` cuando la firma y expiración son válidas; sin token, con token inválido o expirado responde `401 Unauthorized`. La verificación se realiza mediante Passport y una estrategia JWT; el guard deja en `req.user` solo la identidad segura `{ id, email }`. Esta ruta no implementa autorización por roles.
+
+### Acceso de rutas en esta etapa
+
+| Ruta | Acceso |
+| --- | --- |
+| `POST /auth/register`, `POST /auth/login` | Pública |
+| `GET /auth/me` | Requiere JWT |
+| `POST /courses` | Requiere JWT |
+| Resto de rutas de cursos | Públicas |
+| Rutas de estudiantes y matrículas | Públicas |
+
+El guard se aplica de forma explícita a las dos rutas protegidas. Un token válido autentica la solicitud, pero no concede permisos basados en roles.
+
+### Rutas públicas y protegidas
+
+En este avance el guard se aplica explícitamente, no de forma global. Registro, login, consultas GET de negocio (excepto `GET /auth/me`) y rutas de estudiantes/matrículas siguen públicas. `POST /courses` requiere un JWT válido para demostrar que el mismo guard se puede reutilizar fuera del módulo de autenticación. Cualquier cuenta autenticada puede crear cursos; todavía no hay roles ni permisos. Sin token, la ruta responde `401` y no crea el recurso. Con token válido conserva la respuesta normal de creación; un DTO inválido sigue respondiendo `400`.
+
+```http
+POST /courses
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "title": "NestJS con autenticación",
+  "level": "beginner"
+}
+```
 
 ## TypeORM por ambiente
 
@@ -165,10 +192,11 @@ Ejecuta las verificaciones automatizadas relevantes con:
 
 ```bash
 npm test -- src/config/ src/courses/ src/enrollments/ src/students/
+npm test -- src/auth/
 npm run build
 ```
 
-La colección [coursehub-demo.http](./requests/coursehub-demo.http) contiene la secuencia integradora, incluidas solicitudes de creación de cursos y estudiantes, matrícula, consulta después de reiniciar, duplicado, estudiante inactivo, paginación, búsqueda combinada y validación `400`. Antes de repetirla, cambia `demoTag` a un valor único y actualiza `courseId`, `activeStudentId` e `inactiveStudentId` con los IDs devueltos en las respuestas de creación. Las solicitudes de creación deben ejecutarse individualmente; después de crear cada estudiante, copia su ID a la variable correspondiente antes de continuar.
+La colección [coursehub-demo.http](./requests/coursehub-demo.http) contiene la secuencia integradora, incluidas solicitudes de creación de cursos y estudiantes, matrícula, consulta después de reiniciar, duplicado, estudiante inactivo, paginación, búsqueda combinada, validación `400` y pruebas JWT. Antes de repetirla, inicia sesión y usa el token solo temporalmente en tu cliente HTTP; no guardes ni compartas el token en el archivo. Cambia `demoTag` a un valor único y actualiza `courseId`, `activeStudentId` e `inactiveStudentId` con los IDs devueltos en las respuestas de creación. Las solicitudes de creación deben ejecutarse individualmente; después de crear cada estudiante, copia su ID a la variable correspondiente antes de continuar.
 
 ## Endpoints Principales
 
@@ -178,11 +206,13 @@ La colección [coursehub-demo.http](./requests/coursehub-demo.http) contiene la 
 |--------|------|-------------|
 | GET | `/courses` | Lista cursos con filtros, paginación y orden (`level`, `page`, `limit`, `sortBy`, `order`) |
 | GET | `/courses/:id` | Obtiene el detalle de un curso |
-| POST | `/courses` | Crea un nuevo curso |
-| PATCH | `/courses/:id` | Actualiza un curso existente |
-| DELETE | `/courses/:id` | Elimina un curso |
+| POST | `/courses` | Crea un curso; requiere JWT |
+| PATCH | `/courses/:id` | Actualiza un curso existente (público en esta etapa) |
+| DELETE | `/courses/:id` | Elimina un curso (público en esta etapa) |
 
 ### 2. Estudiantes (`/students`)
+
+Las rutas de estudiantes permanecen públicas en esta etapa.
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
@@ -194,6 +224,8 @@ La colección [coursehub-demo.http](./requests/coursehub-demo.http) contiene la 
 | PATCH | `/students/:id/toggle-status` | Activa o inactiva a un estudiante |
 
 ### 3. Matrículas (`/enrollments`)
+
+Las rutas de matrículas permanecen públicas en esta etapa.
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|

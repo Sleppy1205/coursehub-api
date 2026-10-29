@@ -1,4 +1,5 @@
 @baseUrl = http://localhost:3000
+@accessToken = replace-with-a-temporary-local-token
 @demoTag = et2-ajusta-antes-de-repetir
 @authEmail = sesion16@example.test
 @authPassword = practica-local-2026
@@ -6,10 +7,22 @@
 @activeStudentId = 1
 @inactiveStudentId = 2
 
+### Sesión 18: sin Authorization se espera 401 y no se crea un curso
+POST {{baseUrl}}/courses
+Content-Type: application/json
+
+{
+  "title": "No debe crearse sin JWT {{demoTag}}",
+  "level": "beginner"
+}
+
 ### 1. Crear seis cursos de demostración (ejecuta cada solicitud una vez)
+### Inicia sesión primero y sustituye @accessToken solo temporalmente en tu cliente HTTP.
+### No guardes ni compartas el token en el archivo.
 ### Curso A: usa su id como @courseId para crear la matrícula más adelante
 # @name createDemoCourseA
 POST {{baseUrl}}/courses
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -19,6 +32,7 @@ Content-Type: application/json
 
 ###
 POST {{baseUrl}}/courses
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -28,6 +42,7 @@ Content-Type: application/json
 
 ###
 POST {{baseUrl}}/courses
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -37,6 +52,7 @@ Content-Type: application/json
 
 ###
 POST {{baseUrl}}/courses
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -46,6 +62,7 @@ Content-Type: application/json
 
 ###
 POST {{baseUrl}}/courses
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -55,6 +72,7 @@ Content-Type: application/json
 
 ###
 POST {{baseUrl}}/courses
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -200,3 +218,13 @@ Content-Type: application/json
 ### Sesión 17: copia accessToken de la respuesta exitosa de login
 GET {{baseUrl}}/auth/me
 Authorization: Bearer {{accessToken}}
+
+### Sesión 18: DTO inválido con token válido; se espera 400
+POST {{baseUrl}}/courses
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "",
+  "level": "not-a-valid-level"
+}

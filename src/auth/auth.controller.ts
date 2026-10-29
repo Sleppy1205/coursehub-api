@@ -13,7 +13,7 @@ import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
-import { JwtPayload } from './types/jwt-payload.type.js';
+import { AuthenticatedUser } from './types/jwt-payload.type.js';
 
 @Controller('auth')
 export class AuthController {
@@ -32,10 +32,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getProfile(@Req() request: Request & { user: JwtPayload }) {
-    return {
-      id: request.user.sub,
-      email: request.user.email,
-    };
+  getProfile(@Req() request: Request & { user: AuthenticatedUser }) {
+    return request.user;
   }
 }
