@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { UserRole } from '../user-role.enum.js';
 
 @Entity('users')
 export class User {
@@ -10,6 +11,13 @@ export class User {
 
   @Column({ select: false })
   passwordHash: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.STUDENT,
+  })
+  role: UserRole;
 
   @CreateDateColumn()
   createdAt: Date;

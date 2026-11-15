@@ -12,6 +12,7 @@ import { Test } from '@nestjs/testing';
 import type { Request } from 'express';
 import request from 'supertest';
 import type { App } from 'supertest/types';
+import { UserRole } from '../../users/user-role.enum.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { JwtStrategy } from '../strategies/jwt.strategy.js';
 import { AuthenticatedUser } from '../types/jwt-payload.type.js';
@@ -68,6 +69,7 @@ describe('JwtAuthGuard', () => {
     const validToken = await jwtService.signAsync({
       sub: 17,
       email: 'ana@example.com',
+      role: UserRole.STUDENT,
     });
     const alteredToken = `${validToken.slice(0, -1)}${validToken.endsWith('a') ? 'b' : 'a'}`;
 
@@ -79,7 +81,7 @@ describe('JwtAuthGuard', () => {
 
   it('rejects an expired token', async () => {
     const expiredToken = await jwtService.signAsync(
-      { sub: 17, email: 'ana@example.com' },
+      { sub: 17, email: 'ana@example.com', role: UserRole.STUDENT },
       { expiresIn: -1 },
     );
 
@@ -93,6 +95,7 @@ describe('JwtAuthGuard', () => {
     const token = await jwtService.signAsync({
       sub: 17,
       email: 'ana@example.com',
+      role: UserRole.STUDENT,
       passwordHash: 'must-not-be-exposed',
     });
 
@@ -100,6 +103,6 @@ describe('JwtAuthGuard', () => {
       .get('/protected')
       .set('Authorization', `Bearer ${token}`)
       .expect(200)
-      .expect({ id: 17, email: 'ana@example.com' });
+      .expect({ id: 17, email: 'ana@example.com', role: UserRole.STUDENT });
   });
 });

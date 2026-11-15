@@ -111,9 +111,9 @@ Content-Type: application/json
 }
 ```
 
-Si las credenciales son correctas, responde `200 OK` con `accessToken` y el usuario seguro (`id`, `email`, `createdAt`). Si el correo no está registrado o la contraseña no coincide, ambos casos responden `401 Unauthorized` con el mismo mensaje (`Invalid credentials`). El email debe tener formato válido y la contraseña debe tener al menos 8 caracteres y no superar los 72 bytes que admite bcrypt; un cuerpo inválido responde `400 Bad Request`. El token es una credencial firmada, no cifrada: no lo compartas ni lo guardes en el repositorio.
+Si las credenciales son correctas, responde `200 OK` con `accessToken` y el usuario seguro (`id`, `email`, `role`, `createdAt`). Si el correo no está registrado o la contraseña no coincide, ambos casos responden `401 Unauthorized` con el mismo mensaje (`Invalid credentials`). El email debe tener formato válido y la contraseña debe tener al menos 8 caracteres y no superar los 72 bytes que admite bcrypt; un cuerpo inválido responde `400 Bad Request`. El token es una credencial firmada, no cifrada: no lo compartas ni lo guardes en el repositorio.
 
-La consulta de inicio de sesión carga `passwordHash` explícitamente solo para comparar con `bcrypt.compare`. Luego se firma un `accessToken` con el payload mínimo `{ sub, email }` y se responde con ese token y el usuario seguro. Las consultas normales no seleccionan ese campo (`select: false`), y tanto el registro como el login construyen una respuesta segura en vez de devolver la entidad.
+La consulta de inicio de sesión carga `passwordHash` explícitamente solo para comparar con `bcrypt.compare`. Luego se firma un `accessToken` con el payload mínimo `{ sub, email, role }` y se responde con ese token y el usuario seguro. Las consultas normales no seleccionan ese campo (`select: false`), y tanto el registro como el login construyen una respuesta segura en vez de devolver la entidad.
 
 Para probar localmente, primero registra una cuenta de práctica con `POST /auth/register` y usa esos mismos datos en `/auth/login`. No guardes contraseñas reales en colecciones HTTP compartidas.
 
@@ -126,32 +126,42 @@ GET /auth/me
 Authorization: Bearer <accessToken>
 ```
 
-Responde con `id` y `email` cuando la firma y expiración son válidas; sin token, con token inválido o expirado responde `401 Unauthorized`. La verificación se realiza mediante Passport y una estrategia JWT; el guard deja en `req.user` solo la identidad segura `{ id, email }`. Esta ruta no implementa autorización por roles.
+Responde con `id`, `email` y `role` cuando la firma y expiración son válidas; sin token, con token inválido o expirado responde `401 Unauthorized`. La verificación se realiza mediante Passport y una estrategia JWT; el guard deja en `req.user` solo la identidad segura `{ id, email, role }`.
 
-### Acceso de rutas en esta etapa
+### Roles, permisos y propiedad (Sesión 19)
 
-| Ruta | Acceso |
+`User.role` es un enum (`admin`, `teacher`, `student`) cuyo valor predeterminado es `student`. El registro público no acepta un rol del cliente; solo un operador debe asignar roles de práctica directamente en la base local. En desarrollo, TypeORM sincroniza la nueva columna porque `synchronize` está habilitado. Antes de desplegar en producción hay que crear y revisar una migración para la columna enum `role` y `courses.createdByUserId`; la sincronización está desactivada en producción.
+
+Para preparar tres cuentas ya registradas en tu base local, reemplaza los correos de ejemplo por los correos de las cuentas de práctica:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = LOWER('admin-practice@example.test');
+UPDATE users SET role = 'teacher' WHERE email = LOWER('teacher-practice@example.test');
+UPDATE users SET role = 'student' WHERE email = LOWER('student-practice@example.test');
+```
+
+Los tokens incluyen el rol leído al iniciar sesión. Después de cambiar un rol, vuelve a iniciar sesión para obtener un token actualizado y deja de usar el anterior. No hay endpoint HTTP para cambiar roles.
+
+| Ruta | Política |
 | --- | --- |
 | `POST /auth/register`, `POST /auth/login` | Pública |
-| `GET /auth/me` | Requiere JWT |
-| `POST /courses` | Requiere JWT |
-| Resto de rutas de cursos | Públicas |
-| Rutas de estudiantes y matrículas | Públicas |
+| `GET /auth/me` | JWT válido |
+| `POST /courses` | JWT y rol `admin` o `teacher`; guarda `createdByUserId` desde la identidad autenticada |
+| `PATCH /courses/:id` | JWT y rol `admin` o `teacher`; admin puede editar cualquiera y teacher solo el curso propio |
+| `DELETE /courses/:id` | JWT y rol `admin` |
+| Lecturas GET y demás rutas | Públicas en esta etapa |
 
-El guard se aplica de forma explícita a las dos rutas protegidas. Un token válido autentica la solicitud, pero no concede permisos basados en roles.
+Un token ausente o inválido responde `401`; una identidad autenticada sin el rol o la propiedad requerida responde `403`. Los cursos existentes antes de esta columna quedan con `createdByUserId = NULL`: solo un admin puede modificarlos y únicamente un admin puede eliminarlos. El ID de propietario nunca se acepta del cuerpo HTTP.
 
-### Rutas públicas y protegidas
-
-En este avance el guard se aplica explícitamente, no de forma global. Registro, login, consultas GET de negocio (excepto `GET /auth/me`) y rutas de estudiantes/matrículas siguen públicas. `POST /courses` requiere un JWT válido para demostrar que el mismo guard se puede reutilizar fuera del módulo de autenticación. Cualquier cuenta autenticada puede crear cursos; todavía no hay roles ni permisos. Sin token, la ruta responde `401` y no crea el recurso. Con token válido conserva la respuesta normal de creación; un DTO inválido sigue respondiendo `400`.
+La matriz de requests reproducible está en [session-19-authorization.http](./requests/session-19-authorization.http). Sustituye sus tres marcadores de token con tokens temporales obtenidos después de asignar los roles locales y volver a iniciar sesión; actualiza también ambos IDs de curso según las respuestas. No guardes tokens reales en ese archivo.
 
 ```http
-POST /courses
+PATCH /courses/12
 Authorization: Bearer <accessToken>
 Content-Type: application/json
 
 {
-  "title": "NestJS con autenticación",
-  "level": "beginner"
+  "title": "Curso actualizado por su docente"
 }
 ```
 
@@ -206,9 +216,9 @@ La colección [coursehub-demo.http](./requests/coursehub-demo.http) contiene la 
 |--------|------|-------------|
 | GET | `/courses` | Lista cursos con filtros, paginación y orden (`level`, `page`, `limit`, `sortBy`, `order`) |
 | GET | `/courses/:id` | Obtiene el detalle de un curso |
-| POST | `/courses` | Crea un curso; requiere JWT |
-| PATCH | `/courses/:id` | Actualiza un curso existente (público en esta etapa) |
-| DELETE | `/courses/:id` | Elimina un curso (público en esta etapa) |
+| POST | `/courses` | Crea un curso; requiere JWT y rol admin o teacher |
+| PATCH | `/courses/:id` | Admin o docente propietario actualiza el curso |
+| DELETE | `/courses/:id` | Elimina un curso; requiere JWT y rol admin |
 
 ### 2. Estudiantes (`/students`)
 

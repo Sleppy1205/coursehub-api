@@ -6,6 +6,7 @@ import {
   AuthenticatedUser,
   JwtPayload,
 } from '../types/jwt-payload.type.js';
+import { UserRole } from '../../users/user-role.enum.js';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -22,7 +23,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (
       !Number.isSafeInteger(payload.sub) ||
       payload.sub <= 0 ||
-      typeof payload.email !== 'string'
+      typeof payload.email !== 'string' ||
+      !Object.values(UserRole).includes(payload.role)
     ) {
       throw new UnauthorizedException('Invalid token payload');
     }
@@ -30,6 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       id: payload.sub,
       email: payload.email,
+      role: payload.role,
     };
   }
 }

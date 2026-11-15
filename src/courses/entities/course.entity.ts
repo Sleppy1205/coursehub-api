@@ -12,6 +12,9 @@ export class Course {
   @Column()
   level: string;
 
+  @Column({ type: 'integer', nullable: true })
+  createdByUserId: number | null;
+
   @OneToMany(() => Enrollment, (enrollment) => enrollment.course)
   enrollments: Enrollment[];
 }

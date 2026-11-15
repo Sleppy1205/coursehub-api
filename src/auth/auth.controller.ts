@@ -33,6 +33,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   getProfile(@Req() request: Request & { user: AuthenticatedUser }) {
-    return request.user;
+    const { id, email, role } = request.user;
+    return { id, email, role };
   }
 }

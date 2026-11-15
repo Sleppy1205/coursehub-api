@@ -6,6 +6,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity.js';
+import { UserRole } from '../users/user-role.enum.js';
 import { UsersService } from '../users/users.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
@@ -57,6 +58,7 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
+      role: user.role ?? UserRole.STUDENT,
       createdAt: user.createdAt,
     };
   }
@@ -76,6 +78,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
+      role: user.role,
     };
 
     return {
@@ -83,6 +86,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        role: user.role,
         createdAt: user.createdAt,
       },
     };

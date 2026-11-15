@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service.js';
+import { UserRole } from '../users/user-role.enum.js';
 import { AuthService } from './auth.service.js';
 
 describe('AuthService', () => {
@@ -39,6 +40,7 @@ describe('AuthService', () => {
     usersService.create.mockResolvedValue({
       id: 1,
       email: 'ana@example.com',
+      role: UserRole.STUDENT,
       createdAt: new Date('2026-10-19T12:00:00.000Z'),
     });
 
@@ -57,6 +59,7 @@ describe('AuthService', () => {
     expect(result).toEqual({
       id: 1,
       email: 'ana@example.com',
+      role: UserRole.STUDENT,
       createdAt: new Date('2026-10-19T12:00:00.000Z'),
     });
   });
@@ -111,6 +114,7 @@ describe('AuthService', () => {
     usersService.findByEmailWithPassword.mockResolvedValue({
       id: 3,
       email: 'ana@example.com',
+      role: UserRole.TEACHER,
       passwordHash: await bcrypt.hash('superSecret123', 4),
       createdAt,
     });
@@ -125,6 +129,7 @@ describe('AuthService', () => {
       user: {
         id: 3,
         email: 'ana@example.com',
+        role: UserRole.TEACHER,
         createdAt,
       },
     });
@@ -134,6 +139,7 @@ describe('AuthService', () => {
     expect(jwtService.signAsync).toHaveBeenCalledWith({
       sub: 3,
       email: 'ana@example.com',
+      role: UserRole.TEACHER,
     });
   });
 
@@ -149,6 +155,7 @@ describe('AuthService', () => {
     usersService.findByEmailWithPassword.mockResolvedValue({
       id: 3,
       email: 'ana@example.com',
+      role: UserRole.STUDENT,
       passwordHash: await bcrypt.hash('differentPassword', 4),
       createdAt: new Date('2026-10-19T12:00:00.000Z'),
     });

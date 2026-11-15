@@ -1,0 +1,96 @@
+@baseUrl = http://localhost:3000
+@studentToken = replace-with-a-temporary-student-token
+@teacherToken = replace-with-a-temporary-teacher-token
+@adminToken = replace-with-a-temporary-admin-token
+@teacherOwnedCourseId = replace-after-creating-with-teacher
+@otherCourseId = replace-after-creating-with-admin
+
+### Student cannot create a course: 403 Forbidden
+POST {{baseUrl}}/courses
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "title": "Student course attempt",
+  "level": "beginner"
+}
+
+### No token cannot create a course: 401 Unauthorized
+POST {{baseUrl}}/courses
+Content-Type: application/json
+
+{
+  "title": "Unauthenticated course attempt",
+  "level": "beginner"
+}
+
+### Teacher creates a course; it becomes owned by the authenticated teacher
+# @name createTeacherCourse
+POST {{baseUrl}}/courses
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "title": "Teacher-owned practice course",
+  "level": "beginner"
+}
+
+### Admin creates another course for cross-owner tests
+# @name createAdminCourse
+POST {{baseUrl}}/courses
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "title": "Admin-owned practice course",
+  "level": "intermediate"
+}
+
+### Teacher can update their own course: 200 OK
+PATCH {{baseUrl}}/courses/{{teacherOwnedCourseId}}
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "title": "Teacher updated own course"
+}
+
+### Teacher cannot update another owner's course: 403 Forbidden
+PATCH {{baseUrl}}/courses/{{otherCourseId}}
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "title": "Unauthorized teacher update"
+}
+
+### Admin can update another owner's course: 200 OK
+PATCH {{baseUrl}}/courses/{{teacherOwnedCourseId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "title": "Admin updated teacher course"
+}
+
+### Teacher cannot delete a course: 403 Forbidden
+DELETE {{baseUrl}}/courses/{{teacherOwnedCourseId}}
+Authorization: Bearer {{teacherToken}}
+
+### Student cannot delete a course: 403 Forbidden
+DELETE {{baseUrl}}/courses/{{teacherOwnedCourseId}}
+Authorization: Bearer {{studentToken}}
+
+### Admin can delete a course: successful delete
+DELETE {{baseUrl}}/courses/{{otherCourseId}}
+Authorization: Bearer {{adminToken}}
+
+### Valid teacher token does not bypass DTO validation: 400 Bad Request
+POST {{baseUrl}}/courses
+Authorization: Bearer {{teacherToken}}
+Content-Type: application/json
+
+{
+  "title": "",
+  "level": "unknown"
+}
