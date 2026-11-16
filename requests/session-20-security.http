@@ -1,0 +1,59 @@
+@baseUrl = http://localhost:3000
+@practiceEmail = replace-with-a-practice-account
+@practicePassword = replace-with-a-local-practice-password
+
+### Ejecuta estos intentos uno por uno, desde el mismo cliente/IP y dentro de un minuto.
+### Los primeros cinco alcanzan el login y normalmente responden 200 o 401.
+### El sexto debe responder 429; no guardes credenciales reales en este archivo.
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{practiceEmail}}",
+  "password": "{{practicePassword}}"
+}
+
+###
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{practiceEmail}}",
+  "password": "{{practicePassword}}"
+}
+
+###
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{practiceEmail}}",
+  "password": "{{practicePassword}}"
+}
+
+###
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{practiceEmail}}",
+  "password": "{{practicePassword}}"
+}
+
+###
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{practiceEmail}}",
+  "password": "{{practicePassword}}"
+}
+
+###
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{practiceEmail}}",
+  "password": "{{practicePassword}}"
+}

@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
+import { createCorsOptions } from './config/cors.config.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,6 +17,10 @@ async function bootstrap() {
   );
 
   const configService = app.get(ConfigService);
+  app.enableCors(
+    createCorsOptions(configService.getOrThrow<string[]>('CORS_ORIGINS')),
+  );
+
   await app.listen(configService.getOrThrow<number>('PORT'));
 }
 bootstrap();

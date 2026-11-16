@@ -19,7 +19,44 @@ export const envValidationSchema = Joi.object({
   }),
   JWT_SECRET: Joi.string().trim().min(32).required(),
   JWT_EXPIRES_IN: Joi.string().trim().min(1).default('15m'),
+  CORS_ORIGINS: Joi.when('NODE_ENV', {
+    is: 'production',
+    // Joi uses `then` to define the conditional production schema.
+    // oxlint-disable-next-line unicorn/no-thenable
+    then: Joi.string().trim().min(1).required(),
+    otherwise: Joi.string().trim().min(1).default('http://localhost:5173'),
+  }),
 }).or('DB_USER', 'DB_USERNAME');
+
+function parseCorsOrigins(value: string, nodeEnv: string): string[] {
+  const origins = value.split(',').map((origin) => origin.trim());
+  const isValid = origins.every((origin) => {
+    if (!origin || origin === '*') {
+      return false;
+    }
+
+    try {
+      const parsed = new URL(origin);
+      return (
+        ['http:', 'https:'].includes(parsed.protocol) &&
+        parsed.origin === origin &&
+        !parsed.username &&
+        !parsed.password &&
+        (nodeEnv !== 'production' || parsed.protocol === 'https:')
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  if (!isValid) {
+    throw new Error(
+      'Configuración de entorno inválida: CORS_ORIGINS (use orígenes HTTP/HTTPS explícitos separados por coma; producción requiere HTTPS)',
+    );
+  }
+
+  return [...new Set(origins)];
+}
 
 export function validateEnvironment(
   config: Record<string, unknown>,
@@ -43,6 +80,11 @@ export function validateEnvironment(
   if (value.DB_USER === undefined) {
     value.DB_USER = value.DB_USERNAME;
   }
+
+  value.CORS_ORIGINS = parseCorsOrigins(
+    value.CORS_ORIGINS,
+    value.NODE_ENV,
+  );
 
   return value;
 }

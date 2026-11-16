@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -71,8 +72,35 @@ export class CoursesService {
     if (actor.role !== UserRole.ADMIN) {
       throw new ForbiddenException('Only administrators can delete courses');
     }
-    await this.coursesRepository.remove(course);
+    try {
+      await this.coursesRepository.remove(course);
+    } catch (error) {
+      if (this.isEnrollmentConstraintViolation(error)) {
+        throw new ConflictException(
+          'Cannot delete a course that has enrollments',
+        );
+      }
+      throw error;
+    }
     return course;
+  }
+
+  private isEnrollmentConstraintViolation(error: unknown): boolean {
+    if (
+      typeof error !== 'object' ||
+      error === null ||
+      !('driverError' in error)
+    ) {
+      return false;
+    }
+
+    const { driverError } = error;
+    return (
+      typeof driverError === 'object' &&
+      driverError !== null &&
+      'code' in driverError &&
+      (driverError.code === '23001' || driverError.code === '23503')
+    );
   }
 
   private assertCanManage(course: Course, actor: AuthenticatedUser): void {

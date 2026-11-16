@@ -17,6 +17,7 @@ describe('envValidationSchema', () => {
       NODE_ENV: 'test',
       PORT: 3000,
       DB_PORT: 5432,
+      CORS_ORIGINS: ['http://localhost:5173'],
     });
   });
 
@@ -61,6 +62,45 @@ describe('envValidationSchema', () => {
         NODE_ENV: 'production',
       }),
     ).toThrow(/DB_PASSWORD/);
+  });
+
+  it('accepts explicit comma-separated origins without wildcards', () => {
+    const value = validateEnvironment({
+      ...validConfig,
+      CORS_ORIGINS: 'http://localhost:5173, https://coursehub.example.edu',
+    });
+
+    expect(value.CORS_ORIGINS).toEqual([
+      'http://localhost:5173',
+      'https://coursehub.example.edu',
+    ]);
+  });
+
+  it('rejects wildcard or malformed CORS origins', () => {
+    expect(() =>
+      validateEnvironment({
+        ...validConfig,
+        CORS_ORIGINS: '*',
+      }),
+    ).toThrow(/CORS_ORIGINS/);
+
+    expect(() =>
+      validateEnvironment({
+        ...validConfig,
+        CORS_ORIGINS: 'localhost:5173',
+      }),
+    ).toThrow(/CORS_ORIGINS/);
+  });
+
+  it('requires an explicit HTTPS origin in production', () => {
+    expect(() =>
+      validateEnvironment({
+        ...validConfig,
+        NODE_ENV: 'production',
+        DB_PASSWORD: 'production-db-password',
+        CORS_ORIGINS: 'http://coursehub.example.edu',
+      }),
+    ).toThrow(/CORS_ORIGINS/);
   });
 
   it('accepts the previous DB_USERNAME variable for local compatibility', () => {

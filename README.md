@@ -34,11 +34,14 @@ DB_PASSWORD=replace-with-your-local-password
 DB_NAME=coursehub
 JWT_SECRET=replace-with-a-long-random-local-secret
 JWT_EXPIRES_IN=15m
+CORS_ORIGINS=http://localhost:5173
 ```
 
-`NODE_ENV` acepta `development`, `test` o `production` (predeterminado: `development`). `PORT` (3000) y `DB_PORT` (5432) deben ser puertos válidos. `DB_HOST`, `DB_NAME`, un usuario (`DB_USER`) y `DB_PASSWORD` son obligatorios; para compatibilidad, `DB_USERNAME` sigue aceptándose si no se define `DB_USER`. Se permite contraseña vacía fuera de producción; en producción debe ser no vacía. `JWT_SECRET` es obligatorio y debe tener al menos 32 caracteres; genera un valor aleatorio solo para tu `.env` local y no uses el marcador de `.env.example` como secreto. `JWT_EXPIRES_IN` define la duración del token y usa `15m` por defecto. La aplicación valida estas variables antes de abrir la conexión y nombra las variables faltantes o inválidas sin imprimir sus valores.
+`NODE_ENV` acepta `development`, `test` o `production` (predeterminado: `development`). `PORT` (3000) y `DB_PORT` (5432) deben ser puertos válidos. `DB_HOST`, `DB_NAME`, un usuario (`DB_USER`) y `DB_PASSWORD` son obligatorios; para compatibilidad, `DB_USERNAME` sigue aceptándose si no se define `DB_USER`. Se permite contraseña vacía fuera de producción; en producción debe ser no vacía. `JWT_SECRET` es obligatorio y debe tener al menos 32 caracteres; genera un valor aleatorio solo para tu `.env` local y no uses el marcador de `.env.example` como secreto. `JWT_EXPIRES_IN` define la duración del token y usa `15m` por defecto. `CORS_ORIGINS` es una lista separada por comas de orígenes exactos (por defecto local: `http://localhost:5173`); no admite `*`, y en producción es obligatorio usar orígenes `https://`. La aplicación valida estas variables antes de abrir la conexión y nombra las variables faltantes o inválidas sin imprimir sus valores.
 
 > **Seguridad:** `.env` está excluido del control de versiones mediante `.gitignore`. El archivo versionado `.env.example` solo contiene valores de ejemplo; reemplaza la contraseña ficticia en tu `.env` local y nunca publiques credenciales reales.
+
+> **HTTPS/TLS:** `http://localhost` se permite solo para desarrollo. Toda comunicación con una instalación de producción debe usar HTTPS; configura la terminación TLS en el proxy inverso, balanceador o plataforma de despliegue. JWT y demás secretos solo se configuran mediante el entorno seguro del despliegue, nunca en el repositorio. Un JWT firmado no está cifrado: por HTTP podría ser interceptado y reutilizado.
 
 Para comprobar el fallo temprano sin modificar archivos, en PowerShell define temporalmente un valor inválido y luego quítalo:
 
@@ -165,6 +168,24 @@ Content-Type: application/json
 }
 ```
 
+## Controles de seguridad para API pública (Sesión 20)
+
+### CORS
+
+La aplicación permite solo los orígenes de `CORS_ORIGINS`, configurados como URLs de origen exactas separadas por comas. En desarrollo el valor predeterminado es `http://localhost:5173`; ajústalo si tu cliente local usa otro puerto. Para producción configura explícitamente orígenes `https://` en el entorno de despliegue. Los métodos permitidos son `GET`, `POST`, `PATCH`, `DELETE` y `OPTIONS`; los encabezados permitidos son `Content-Type` y `Authorization`. No se habilita `*` ni se permiten credenciales de cookies.
+
+Para comprobarlo desde el navegador, sirve una página desde el origen permitido y otra desde un origen distinto: la permitida podrá leer la respuesta; la no permitida no recibirá `Access-Control-Allow-Origin`. El servidor todavía puede recibir una solicitud del origen no permitido; CORS hace que el navegador impida leer la respuesta y no sustituye JWT ni roles. Postman y scripts no aplican esta política del navegador.
+
+### Limitación de solicitudes
+
+`ThrottlerGuard` limita globalmente a 20 solicitudes por minuto por dirección IP. `POST /auth/login` tiene un límite más estricto: cinco intentos por minuto; el siguiente responde `429 Too Many Requests` con un mensaje genérico, sin incluir correo, contraseña ni indicar si una cuenta existe. Espera a que termine la ventana de un minuto antes de repetir la demostración. El almacenamiento predeterminado del limitador es local al proceso; para varias instancias de producción se necesita un almacenamiento compartido. La configuración usa la IP de la conexión; si despliegas detrás de un proxy, configura el proxy y la confianza de IP de forma explícita antes de depender de límites por IP.
+
+Ejecuta seis solicitudes controladas desde el mismo cliente con [session-20-security.http](./requests/session-20-security.http), usando solo una cuenta y contraseña ficticias de práctica. Envía las peticiones de una en una y dentro del mismo minuto; las primeras cinco alcanzan el login y la sexta debe responder `429`. La prueba automatizada `src/auth/auth.throttle.spec.ts` también verifica ese límite.
+
+### HTTPS y secretos
+
+`http://localhost` se reserva para desarrollo. En producción, el cliente y la API deben comunicarse mediante HTTPS/TLS, normalmente con TLS terminado en un proxy inverso, balanceador o plataforma segura. No envíes tokens Bearer por HTTP: una firma válida no cifra el token ni evita que alguien que lo intercepte lo reutilice. `JWT_SECRET`, credenciales de base de datos y demás secretos solo se configuran en `.env` local ignorado o en el gestor de secretos/entorno seguro del despliegue; nunca se versionan.
+
 ## TypeORM por ambiente
 
 La conexión PostgreSQL se construye con `ConfigService` y las variables validadas: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` y `DB_NAME`. Las entidades se cargan mediante `autoLoadEntities` a partir de `TypeOrmModule.forFeature` en los módulos de cursos, estudiantes y matrículas.
@@ -218,7 +239,7 @@ La colección [coursehub-demo.http](./requests/coursehub-demo.http) contiene la 
 | GET | `/courses/:id` | Obtiene el detalle de un curso |
 | POST | `/courses` | Crea un curso; requiere JWT y rol admin o teacher |
 | PATCH | `/courses/:id` | Admin o docente propietario actualiza el curso |
-| DELETE | `/courses/:id` | Elimina un curso; requiere JWT y rol admin |
+| DELETE | `/courses/:id` | Elimina un curso; requiere JWT y rol admin. Responde `409 Conflict` si tiene matrículas asociadas |
 
 ### 2. Estudiantes (`/students`)
 

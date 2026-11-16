@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserRole } from '../users/user-role.enum.js';
@@ -151,5 +151,45 @@ describe('CoursesService', () => {
       ),
     ).resolves.toBe(course);
     expect(coursesRepository.remove).toHaveBeenCalledWith(course);
+  });
+
+  it('returns a conflict instead of exposing PostgreSQL enrollment constraint errors', async () => {
+    const course = { id: 4, createdByUserId: 8 };
+    coursesRepository.findOneBy.mockResolvedValue(course);
+    coursesRepository.remove.mockRejectedValue({
+      driverError: {
+        code: '23001',
+        constraint: 'enrollment_course_fk',
+        detail: 'The course is still referenced by enrollments.',
+      },
+    });
+
+    const error = await service
+      .remove(4, {
+        id: 1,
+        email: 'admin@example.test',
+        role: UserRole.ADMIN,
+      })
+      .catch((caught) => caught);
+
+    expect(error).toBeInstanceOf(ConflictException);
+    expect(error).toMatchObject({
+      status: 409,
+      message: 'Cannot delete a course that has enrollments',
+    });
+  });
+
+  it('propagates unrelated errors when deleting a course', async () => {
+    const course = { id: 4, createdByUserId: 8 };
+    const databaseError = new Error('Database unavailable');
+    coursesRepository.findOneBy.mockResolvedValue(course);
+    coursesRepository.remove.mockRejectedValue(databaseError);
+
+    await expect(
+      service.remove(
+        4,
+        { id: 1, email: 'admin@example.test', role: UserRole.ADMIN },
+      ),
+    ).rejects.toBe(databaseError);
   });
 });
