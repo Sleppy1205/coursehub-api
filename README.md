@@ -209,6 +209,17 @@ Remove-Item Env:PORT
 
 Para volver al modo de desarrollo, ejecuta `npm run start:dev` sin sobrescribir `NODE_ENV` (el valor de `.env.example` es `development`).
 
+## Middleware, pipes, filters e interceptors (Sesión 21)
+
+- El middleware global registra método, ruta sin query string, estado y duración al terminar la respuesta. No registra encabezados, cuerpos, credenciales ni tokens.
+- `ValidationPipe` valida los DTOs globalmente; `ParseIntPipe` convierte y rechaza identificadores no numéricos en rutas de cursos y estudiantes. Las matrículas conservan su pipe numérico.
+- `HttpErrorFilter` normaliza errores como `{ statusCode, path, timestamp, message }`. Mantiene los mensajes de errores HTTP esperados (por ejemplo, `400` y `404`) y responde con un mensaje genérico ante fallos internos; no expone consultas ni trazas.
+- `TimingInterceptor` añade `X-Response-Time` sin modificar el cuerpo ni ocultar excepciones.
+
+Prueba los casos HTTP controlados con [session-21-cross-cutting.http](./requests/session-21-cross-cutting.http): el ID no numérico debe responder `400` y un ID inexistente debe responder `404`, ambos con el contrato del filtro. Las pruebas unitarias del filtro verifican además que un error inesperado responda `500` sin filtrar sus detalles; no se agrega una ruta pública de prueba para provocar errores internos.
+
+Como guía: un token inválido corresponde al guard de autenticación (`401`); un ID no numérico, al pipe (`400`); un recurso ausente, a la excepción HTTP del servicio (`404`); y una operación lenta se observa con el interceptor y el log de duración.
+
 ## Lista de comprobación de Etapa 2
 
 | Aspecto | Verificación |

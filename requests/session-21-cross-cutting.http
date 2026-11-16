@@ -1,0 +1,7 @@
+@baseUrl = http://localhost:3000
+
+### ID no numérico: debe responder 400 con el contrato uniforme de error
+GET {{baseUrl}}/courses/not-a-number
+
+### Recurso inexistente: debe responder 404 con el contrato uniforme de error
+GET {{baseUrl}}/courses/2147483647
