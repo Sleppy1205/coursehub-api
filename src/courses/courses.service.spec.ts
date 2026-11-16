@@ -6,6 +6,7 @@ import { AuthenticatedUser } from '../auth/types/jwt-payload.type.js';
 import { Course } from './entities/course.entity.js';
 import { CoursesQueryDto } from './dto/courses-query.dto.js';
 import { CoursesService } from './courses.service.js';
+import { UpdateCourseUseCase } from './application/update-course.use-case.js';
 
 describe('CoursesService', () => {
   let service: CoursesService;
@@ -16,12 +17,22 @@ describe('CoursesService', () => {
     save: vi.fn((value) => Promise.resolve(value)),
     remove: vi.fn((value) => Promise.resolve(value)),
   };
+  const updateCourseUseCase = {
+    execute: vi.fn(),
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    updateCourseUseCase.execute.mockResolvedValue({
+      id: 4,
+      title: 'Updated course',
+      level: 'beginner',
+      createdByUserId: 8,
+    });
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CoursesService,
+        { provide: UpdateCourseUseCase, useValue: updateCourseUseCase },
         { provide: getRepositoryToken(Course), useValue: coursesRepository },
       ],
     }).compile();
@@ -84,52 +95,23 @@ describe('CoursesService', () => {
     });
   });
 
-  it('allows a teacher to update their own course', async () => {
-    const course = {
-      id: 4,
-      title: 'Owned course',
-      level: 'beginner',
-      createdByUserId: 8,
+  it('delegates course updates to the application use case', async () => {
+    const changes = { title: 'Updated course' };
+    const actor: AuthenticatedUser = {
+      id: 8,
+      email: 'teacher@example.test',
+      role: UserRole.TEACHER,
     };
-    coursesRepository.findOneBy.mockResolvedValue(course);
 
-    await expect(
-      service.update(
-        4,
-        { title: 'Updated course' },
-        { id: 8, email: 'teacher@example.test', role: UserRole.TEACHER },
-      ),
-    ).resolves.toMatchObject({ title: 'Updated course' });
-    expect(coursesRepository.save).toHaveBeenCalledWith(course);
-  });
-
-  it('forbids a teacher from updating another teacher’s course', async () => {
-    coursesRepository.findOneBy.mockResolvedValue({
-      id: 4,
-      createdByUserId: 9,
+    await expect(service.update(4, changes, actor)).resolves.toMatchObject({
+      title: 'Updated course',
     });
-
-    await expect(
-      service.update(
-        4,
-        { title: 'Unauthorized update' },
-        { id: 8, email: 'teacher@example.test', role: UserRole.TEACHER },
-      ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(updateCourseUseCase.execute).toHaveBeenCalledWith(
+      4,
+      changes,
+      actor,
+    );
     expect(coursesRepository.save).not.toHaveBeenCalled();
-  });
-
-  it('allows an admin to update another user’s course', async () => {
-    const course = { id: 4, title: 'Teacher course', createdByUserId: 9 };
-    coursesRepository.findOneBy.mockResolvedValue(course);
-
-    await expect(
-      service.update(
-        4,
-        { title: 'Admin update' },
-        { id: 1, email: 'admin@example.test', role: UserRole.ADMIN },
-      ),
-    ).resolves.toMatchObject({ title: 'Admin update' });
   });
 
   it('allows only an admin to delete a course', async () => {

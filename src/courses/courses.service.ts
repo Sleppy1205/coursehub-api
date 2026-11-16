@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { UpdateCourseUseCase } from './application/update-course.use-case.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthenticatedUser } from '../auth/types/jwt-payload.type.js';
@@ -18,6 +19,7 @@ export class CoursesService {
   constructor(
     @InjectRepository(Course)
     private readonly coursesRepository: Repository<Course>,
+    private readonly updateCourseUseCase: UpdateCourseUseCase,
   ) {}
 
   async findAll(query: CoursesQueryDto) {
@@ -61,10 +63,7 @@ export class CoursesService {
     dto: UpdateCourseDto,
     actor: AuthenticatedUser,
   ) {
-    const course = await this.findOne(id);
-    this.assertCanManage(course, actor);
-    Object.assign(course, dto);
-    return this.coursesRepository.save(course);
+    return this.updateCourseUseCase.execute(id, dto, actor);
   }
 
   async remove(id: number, actor: AuthenticatedUser) {
@@ -103,13 +102,4 @@ export class CoursesService {
     );
   }
 
-  private assertCanManage(course: Course, actor: AuthenticatedUser): void {
-    if (
-      actor.role !== UserRole.ADMIN &&
-      !(actor.role === UserRole.TEACHER &&
-        course.createdByUserId === actor.id)
-    ) {
-      throw new ForbiddenException('You cannot modify this course');
-    }
-  }
 }

@@ -220,6 +220,14 @@ Prueba los casos HTTP controlados con [session-21-cross-cutting.http](./requests
 
 Como guía: un token inválido corresponde al guard de autenticación (`401`); un ID no numérico, al pipe (`400`); un recurso ausente, a la excepción HTTP del servicio (`404`); y una operación lenta se observa con el interceptor y el log de duración.
 
+## Casos de uso, puertos y adaptadores (Sesión 22)
+
+La actualización de cursos conserva `PATCH /courses/:id` y su respuesta, pero la regla de propiedad vive en `UpdateCourseUseCase`. El caso de uso depende del puerto mínimo `CourseRepository` (`findById` y `save`), declarado con el token `COURSE_REPOSITORY`. `TypeOrmCourseRepository` implementa el puerto usando el repositorio de TypeORM; `CoursesModule` conecta ambos mediante `provide` y `useClass`.
+
+El servicio de aplicación delega la actualización al caso de uso. La política resultante sigue siendo: un administrador puede actualizar cualquier curso y un docente solo el curso cuyo `createdByUserId` coincide con su identidad autenticada; estudiante o docente ajeno recibe `403`, y un curso inexistente mantiene `404`. La identidad y el propietario se toman de la solicitud autenticada y del curso persistido, nunca de los cambios recibidos del cliente.
+
+Si se reemplaza TypeORM, se sustituye el adaptador y su registro del puerto; el caso de uso no necesita conocer la biblioteca de persistencia. Si cambia la regla de propiedad, se modifica `UpdateCourseUseCase`; el controlador y el adaptador permanecen ajenos a esa decisión. `src/courses/application/update-course.use-case.spec.ts` prueba esta lógica con un repositorio falso, sin HTTP ni PostgreSQL.
+
 ## Lista de comprobación de Etapa 2
 
 | Aspecto | Verificación |
