@@ -2,12 +2,17 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import { UserRole } from '../../users/user-role.enum.js';
 import { Course } from '../entities/course.entity.js';
-import { CourseRepository } from './course-repository.port.js';
+import {
+  COURSE_REPOSITORY,
+  CourseRepository,
+} from './course-repository.port.js';
 import { UpdateCourseUseCase } from './update-course.use-case.js';
 
 describe('UpdateCourseUseCase', () => {
+  let useCase: UpdateCourseUseCase;
   const createCourse = (): Course => ({
     id: 4,
     title: 'Existing course',
@@ -19,61 +24,74 @@ describe('UpdateCourseUseCase', () => {
     findById: vi.fn(),
     save: vi.fn(),
   };
-  const useCase = new UpdateCourseUseCase(repository);
   const changes = { title: 'Updated course' };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        UpdateCourseUseCase,
+        { provide: COURSE_REPOSITORY, useValue: repository },
+      ],
+    }).compile();
+    useCase = module.get(UpdateCourseUseCase);
   });
 
   it('lets the owning teacher update their course', async () => {
+    // Arrange
     const course = createCourse();
+    const actor = { id: 8, role: UserRole.TEACHER };
     vi.mocked(repository.findById).mockResolvedValue(course);
     vi.mocked(repository.save).mockImplementation(async (value) => value);
 
-    await expect(
-      useCase.execute(4, changes, {
-        id: 8,
-        role: UserRole.TEACHER,
-      }),
-    ).resolves.toMatchObject({ title: 'Updated course' });
+    // Act
+    const result = await useCase.execute(4, changes, actor);
+
+    // Assert
+    expect(result.title).toBe('Updated course');
     expect(repository.save).toHaveBeenCalledWith(course);
   });
 
   it('forbids a teacher from updating another teacher’s course', async () => {
-    vi.mocked(repository.findById).mockResolvedValue(createCourse());
+    // Arrange
+    const course = createCourse();
+    const actor = { id: 9, role: UserRole.TEACHER };
+    vi.mocked(repository.findById).mockResolvedValue(course);
 
-    await expect(
-      useCase.execute(4, changes, {
-        id: 9,
-        role: UserRole.TEACHER,
-      }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    // Act
+    const result = useCase.execute(4, changes, actor);
+
+    // Assert
+    await expect(result).rejects.toBeInstanceOf(ForbiddenException);
     expect(repository.save).not.toHaveBeenCalled();
   });
 
   it('allows an administrator to update a course they do not own', async () => {
-    vi.mocked(repository.findById).mockResolvedValue(createCourse());
+    // Arrange
+    const course = createCourse();
+    const actor = { id: 1, role: UserRole.ADMIN };
+    vi.mocked(repository.findById).mockResolvedValue(course);
     vi.mocked(repository.save).mockImplementation(async (value) => value);
 
-    await expect(
-      useCase.execute(4, changes, {
-        id: 1,
-        role: UserRole.ADMIN,
-      }),
-    ).resolves.toMatchObject({ title: 'Updated course' });
+    // Act
+    const result = await useCase.execute(4, changes, actor);
+
+    // Assert
+    expect(result.title).toBe('Updated course');
+    expect(result.createdByUserId).toBe(8);
     expect(repository.save).toHaveBeenCalledOnce();
   });
 
   it('returns not found without saving when the course does not exist', async () => {
+    // Arrange
+    const actor = { id: 8, role: UserRole.TEACHER };
     vi.mocked(repository.findById).mockResolvedValue(null);
 
-    await expect(
-      useCase.execute(404, changes, {
-        id: 8,
-        role: UserRole.TEACHER,
-      }),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    // Act
+    const result = useCase.execute(404, changes, actor);
+
+    // Assert
+    await expect(result).rejects.toBeInstanceOf(NotFoundException);
     expect(repository.save).not.toHaveBeenCalled();
   });
 });

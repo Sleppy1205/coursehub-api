@@ -228,6 +228,27 @@ El servicio de aplicación delega la actualización al caso de uso. La política
 
 Si se reemplaza TypeORM, se sustituye el adaptador y su registro del puerto; el caso de uso no necesita conocer la biblioteca de persistencia. Si cambia la regla de propiedad, se modifica `UpdateCourseUseCase`; el controlador y el adaptador permanecen ajenos a esa decisión. `src/courses/application/update-course.use-case.spec.ts` prueba esta lógica con un repositorio falso, sin HTTP ni PostgreSQL.
 
+## Pruebas unitarias de reglas de negocio (Sesión 23)
+
+`UpdateCourseUseCase` se prueba con Arrange–Act–Assert y un repositorio falso registrado mediante el token `COURSE_REPOSITORY`. Las pruebas no crean el servidor HTTP ni abren PostgreSQL: controlan directamente `findById` y `save`.
+
+El conjunto cubre:
+
+- éxito del docente propietario y persistencia con `save`;
+- `403 Forbidden` al intentar actualizar el curso de otro docente;
+- permiso del administrador para actualizar cursos ajenos;
+- `404 Not Found` cuando no existe el curso.
+
+En los casos de rechazo se verifica tanto la excepción como que `save` no fue llamado. Así, una respuesta de error no puede ocultar una modificación que ya habría sido persistida.
+
+Ejecuta únicamente las pruebas del caso de uso con:
+
+```bash
+npm test -- update-course
+```
+
+Ejecuta toda la suite con `npm test`, compila con `npm run build` y revisa el código con `npm run lint`. La práctica manual de cambiar temporalmente una expectativa permite comprobar que la prueba detecta una regresión; restaura la expectativa correcta antes de finalizar y no versiones ese fallo.
+
 ## Lista de comprobación de Etapa 2
 
 | Aspecto | Verificación |
