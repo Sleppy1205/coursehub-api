@@ -289,6 +289,16 @@ Remove-Item Env:E2E_DB_HOST, Env:E2E_DB_PORT, Env:E2E_DB_NAME, Env:E2E_DB_USER, 
 
 La prueba unitaria verifica una clase aislada; una prueba de integración verifica componentes conectados; esta e2e atraviesa HTTP, guards, validación, controladores, casos de uso y PostgreSQL. Un `401` sin token y un `403` con identidad insuficiente son contratos HTTP distintos y ambos se comprueban.
 
+## Automatización de calidad (Sesión 26)
+
+El workflow [quality.yml](./.github/workflows/quality.yml) se ejecuta en cada `push`, `pull_request` y manualmente. El job principal usa Node.js 22, instala exclusivamente lo fijado en `package-lock.json` mediante `npm ci`, y ejecuta en pasos identificables lint, pruebas unitarias, pruebas e2e y build. El e2e usa un servicio PostgreSQL 16 efímero con credenciales ficticias exclusivas del job; no requiere ni expone secretos de la aplicación.
+
+En cada pull request se ejecuta además `actions/dependency-review-action`, que rechaza cambios de dependencias con vulnerabilidades de severidad alta o crítica. Como revisión complementaria, ejecuta `npm audit` y evalúa cada paquete afectado y su actualización compatible antes de cambiar versiones; no uses `npm audit fix --force` sin revisar el impacto.
+
+La auditoría local del lockfile realizada para esta sesión informó 20 avisos (2 bajos, 8 moderados, 9 altos y 1 crítico), incluyendo dependencias transitivas. Algunas correcciones sugeridas por npm requieren cambios incompatibles. Este hallazgo no se presenta como resuelto ni bloquea todos los builds de forma indiscriminada: la revisión de PR cubre dependencias nuevas o actualizadas, y la auditoría existente debe tratarse en cambios específicos, con análisis de compatibilidad y pruebas.
+
+Para comprobar localmente el fallo controlado, cambia temporalmente una expectativa de una prueba unitaria a un valor incorrecto y ejecuta `npm test`: el paso debe terminar con código distinto de cero. Restaura la expectativa y vuelve a correr `npm test`; el workflow aplica el mismo comando, por lo que reportará esa falla en el paso de pruebas. Para verificar el recorrido del workflow localmente, ejecuta en orden `npm ci`, `npm run lint`, `npm test`, `npm run test:e2e` (con la base aislada de la Sesión 25) y `npm run build`.
+
 ## Lista de comprobación de Etapa 2
 
 | Aspecto | Verificación |
