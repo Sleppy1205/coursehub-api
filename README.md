@@ -192,7 +192,7 @@ La conexión PostgreSQL se construye con `ConfigService` y las variables validad
 
 La sincronización automática del esquema se activa únicamente con `NODE_ENV=development`. En `production` y `test` se mantiene desactivada; no se ejecutan migraciones automáticamente en esta etapa. Para producción, configura las variables en el entorno seguro del servicio de despliegue y planifica migraciones revisadas antes de cambiar el esquema. Nunca copies el `.env` local a producción ni compartas sus secretos.
 
-Para comprobar la política sin desplegar y sin usar una base ajena, conserva las credenciales de tu base local en `.env` y, en PowerShell, inicia una instancia de prueba en otro puerto:
+Para comprobar que la política sin desplegar y sin usar una base ajena, conserva las credenciales de tu base local en `.env` y, en PowerShell, inicia una instancia de prueba en otro puerto:
 
 ```powershell
 $env:NODE_ENV = 'production'
