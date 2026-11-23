@@ -1,7 +1,6 @@
 import { Controller, Get, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import type { App } from 'supertest/types';
 import { createCorsOptions } from './cors.config.js';
 
 @Controller('cors-test')
@@ -13,7 +12,7 @@ class CorsTestController {
 }
 
 describe('CORS configuration', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({

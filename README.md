@@ -263,6 +263,32 @@ Revisa líneas, funciones y ramas como indicadores de qué caminos se ejecutaron
 
 En la revisión actual del reporte, las pruebas del controlador ejercitan el PATCH exitoso y la propagación de su error; `findAll`, `findOne`, `create` y `remove` siguen sin cubrirse en ese archivo. Esto delimita qué rutas no están ejercitadas, pero no obliga a probar cada método trivial solo para elevar el porcentaje: añade cobertura cuando exista un contrato o una transformación específica que proteger.
 
+## Pruebas de integración y end-to-end (Sesión 25)
+
+Las pruebas e2e de `test/courses.e2e-spec.ts` inician Nest y envían HTTP con Supertest. Cubren la colección vacía de cursos, `401` sin token, `403` para un estudiante autenticado y creación/lectura de un curso por un docente autenticado. Preparan usuarios mediante el flujo HTTP de registro e inicio de sesión; el rol docente se asigna solo en la base aislada de pruebas. El comando unitario `npm test` excluye todos los archivos `*.e2e-spec.ts`, para que no arranque accidentalmente la aplicación contra `.env`.
+
+Por seguridad, estas pruebas **no leen las credenciales de `.env`**. Requieren exactamente la base PostgreSQL local `coursehub_e2e_test` y credenciales explícitas `E2E_DB_*`. En PowerShell, crea una base nueva con tu rol PostgreSQL local de pruebas (no uses una base de producción ni la base de desarrollo):
+
+```powershell
+createdb -h localhost -p 5432 -U postgres coursehub_e2e_test
+
+$env:E2E_DB_HOST = 'localhost'
+$env:E2E_DB_PORT = '5432'
+$env:E2E_DB_NAME = 'coursehub_e2e_test'
+$env:E2E_DB_USER = 'postgres'
+$env:E2E_DB_PASSWORD = 'contraseña-local-de-pruebas'
+npm run test:e2e
+npm run test:e2e
+```
+
+Repite el comando para confirmar que el resultado no depende de la ejecución anterior. La configuración rechaza hosts remotos y cualquier nombre de base distinto de `coursehub_e2e_test`; el esquema se sincroniza únicamente para esa combinación local de pruebas. Antes de cada caso y al terminar se truncan las tablas de matrículas, cursos, estudiantes y usuarios y se reinician sus secuencias, aislando las pruebas entre sí. No guardes estas credenciales en el repositorio. Al terminar, quita las variables temporales:
+
+```powershell
+Remove-Item Env:E2E_DB_HOST, Env:E2E_DB_PORT, Env:E2E_DB_NAME, Env:E2E_DB_USER, Env:E2E_DB_PASSWORD
+```
+
+La prueba unitaria verifica una clase aislada; una prueba de integración verifica componentes conectados; esta e2e atraviesa HTTP, guards, validación, controladores, casos de uso y PostgreSQL. Un `401` sin token y un `403` con identidad insuficiente son contratos HTTP distintos y ambos se comprueban.
+
 ## Lista de comprobación de Etapa 2
 
 | Aspecto | Verificación |

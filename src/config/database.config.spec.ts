@@ -35,4 +35,49 @@ describe('createDatabaseOptions', () => {
       expect(options.autoLoadEntities).toBe(true);
     },
   );
+
+  it('synchronizes only the dedicated local E2E database', () => {
+    const options = createDatabaseOptions(
+      new ConfigService({
+        NODE_ENV: 'test',
+        DB_HOST: 'localhost',
+        DB_PORT: 5432,
+        DB_USER: 'coursehub_local',
+        DB_PASSWORD: 'local-only-test-password',
+        DB_NAME: 'coursehub_e2e_test',
+      }),
+    );
+
+    expect(options.synchronize).toBe(true);
+  });
+
+  it('does not synchronize the E2E database on a remote host', () => {
+    const options = createDatabaseOptions(
+      new ConfigService({
+        NODE_ENV: 'test',
+        DB_HOST: 'database.example.test',
+        DB_PORT: 5432,
+        DB_USER: 'coursehub_local',
+        DB_PASSWORD: 'local-only-test-password',
+        DB_NAME: 'coursehub_e2e_test',
+      }),
+    );
+
+    expect(options.synchronize).toBe(false);
+  });
+
+  it('does not synchronize a different local test database', () => {
+    const options = createDatabaseOptions(
+      new ConfigService({
+        NODE_ENV: 'test',
+        DB_HOST: 'localhost',
+        DB_PORT: 5432,
+        DB_USER: 'coursehub_local',
+        DB_PASSWORD: 'local-only-test-password',
+        DB_NAME: 'coursehub_test',
+      }),
+    );
+
+    expect(options.synchronize).toBe(false);
+  });
 });

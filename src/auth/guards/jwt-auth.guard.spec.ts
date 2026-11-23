@@ -11,7 +11,6 @@ import { PassportModule } from '@nestjs/passport';
 import { Test } from '@nestjs/testing';
 import type { Request } from 'express';
 import request from 'supertest';
-import type { App } from 'supertest/types';
 import { UserRole } from '../../users/user-role.enum.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { JwtStrategy } from '../strategies/jwt.strategy.js';
@@ -29,7 +28,7 @@ class ProtectedTestController {
 }
 
 describe('JwtAuthGuard', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
   let jwtService: JwtService;
 
   beforeAll(async () => {

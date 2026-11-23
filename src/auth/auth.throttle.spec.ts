@@ -4,16 +4,14 @@ import { PassportModule } from '@nestjs/passport';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
-import type { App } from 'supertest/types';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 describe('POST /auth/login throttle', () => {
-  let app: INestApplication<App>;
-  let server: App;
+  let app: INestApplication;
 
-  async function createApplication(): Promise<INestApplication<App>> {
+  async function createApplication(): Promise<INestApplication> {
     const moduleRef = await Test.createTestingModule({
       imports: [
         ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
@@ -36,14 +34,13 @@ describe('POST /auth/login throttle', () => {
       ],
     }).compile();
 
-    const application = moduleRef.createNestApplication<App>();
+    const application = moduleRef.createNestApplication();
     await application.init();
     return application;
   }
 
   beforeAll(async () => {
     app = await createApplication();
-    server = app.getHttpServer() as App;
   });
 
   afterAll(async () => {
@@ -57,10 +54,13 @@ describe('POST /auth/login throttle', () => {
     };
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      await request(server).post('/auth/login').send(credentials).expect(200);
+      await request(app.getHttpServer())
+        .post('/auth/login')
+        .send(credentials)
+        .expect(200);
     }
 
-    const response = await request(server)
+    const response = await request(app.getHttpServer())
       .post('/auth/login')
       .send(credentials)
       .expect(429);
