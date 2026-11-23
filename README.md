@@ -224,7 +224,7 @@ Como guía: un token inválido corresponde al guard de autenticación (`401`); u
 
 La actualización de cursos conserva `PATCH /courses/:id` y su respuesta, pero la regla de propiedad vive en `UpdateCourseUseCase`. El caso de uso depende del puerto mínimo `CourseRepository` (`findById` y `save`), declarado con el token `COURSE_REPOSITORY`. `TypeOrmCourseRepository` implementa el puerto usando el repositorio de TypeORM; `CoursesModule` conecta ambos mediante `provide` y `useClass`.
 
-El servicio de aplicación delega la actualización al caso de uso. La política resultante sigue siendo: un administrador puede actualizar cualquier curso y un docente solo el curso cuyo `createdByUserId` coincide con su identidad autenticada; estudiante o docente ajeno recibe `403`, y un curso inexistente mantiene `404`. La identidad y el propietario se toman de la solicitud autenticada y del curso persistido, nunca de los cambios recibidos del cliente.
+El controlador delega la actualización al caso de uso. La política resultante sigue siendo: un administrador puede actualizar cualquier curso y un docente solo el curso cuyo `createdByUserId` coincide con su identidad autenticada; estudiante o docente ajeno recibe `403`, y un curso inexistente mantiene `404`. La identidad y el propietario se toman de la solicitud autenticada y del curso persistido, nunca de los cambios recibidos del cliente.
 
 Si se reemplaza TypeORM, se sustituye el adaptador y su registro del puerto; el caso de uso no necesita conocer la biblioteca de persistencia. Si cambia la regla de propiedad, se modifica `UpdateCourseUseCase`; el controlador y el adaptador permanecen ajenos a esa decisión. `src/courses/application/update-course.use-case.spec.ts` prueba esta lógica con un repositorio falso, sin HTTP ni PostgreSQL.
 
@@ -248,6 +248,20 @@ npm test -- update-course
 ```
 
 Ejecuta toda la suite con `npm test`, compila con `npm run build` y revisa el código con `npm run lint`. La práctica manual de cambiar temporalmente una expectativa permite comprobar que la prueba detecta una regresión; restaura la expectativa correcta antes de finalizar y no versiones ese fallo.
+
+## Controladores y cobertura (Sesión 24)
+
+La prueba de `CoursesController.update` sustituye `UpdateCourseUseCase` por una función simulada y comprueba que el controlador le entrega el ID, el DTO original y el usuario autenticado, y que devuelve su resultado. Una segunda prueba comprueba que un rechazo del caso de uso se propaga: el controlador no debe convertirlo en una respuesta exitosa. La propiedad y los permisos se verifican en las pruebas unitarias del caso de uso, no se vuelven a probar aquí.
+
+Para generar el reporte de cobertura:
+
+```bash
+npm test -- --coverage
+```
+
+Revisa líneas, funciones y ramas como indicadores de qué caminos se ejecutaron; prioriza ramas de negocio y autorización con expectativas que confirmen el resultado y los efectos, por ejemplo, que `save` no se invoque ante un `403`. El porcentaje no demuestra por sí solo que la regla sea correcta ni reemplaza revisión de código. Antes de cambiar la regla de propiedad, añade una prueba de caso de uso para el nuevo comportamiento, incluyendo el resultado permitido/rechazado y si debe persistirse.
+
+En la revisión actual del reporte, las pruebas del controlador ejercitan el PATCH exitoso y la propagación de su error; `findAll`, `findOne`, `create` y `remove` siguen sin cubrirse en ese archivo. Esto delimita qué rutas no están ejercitadas, pero no obliga a probar cada método trivial solo para elevar el porcentaje: añade cobertura cuando exista un contrato o una transformación específica que proteger.
 
 ## Lista de comprobación de Etapa 2
 

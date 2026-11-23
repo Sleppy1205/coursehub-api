@@ -4,13 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { UpdateCourseUseCase } from './application/update-course.use-case.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthenticatedUser } from '../auth/types/jwt-payload.type.js';
 import { CreateCourseDto } from './dto/create-course.dto.js';
 import { CoursesQueryDto } from './dto/courses-query.dto.js';
-import { UpdateCourseDto } from './dto/update-course.dto.js';
 import { Course } from './entities/course.entity.js';
 import { UserRole } from '../users/user-role.enum.js';
 
@@ -19,7 +17,6 @@ export class CoursesService {
   constructor(
     @InjectRepository(Course)
     private readonly coursesRepository: Repository<Course>,
-    private readonly updateCourseUseCase: UpdateCourseUseCase,
   ) {}
 
   async findAll(query: CoursesQueryDto) {
@@ -56,14 +53,6 @@ export class CoursesService {
       createdByUserId: actor.id,
     });
     return this.coursesRepository.save(course);
-  }
-
-  async update(
-    id: number,
-    dto: UpdateCourseDto,
-    actor: AuthenticatedUser,
-  ) {
-    return this.updateCourseUseCase.execute(id, dto, actor);
   }
 
   async remove(id: number, actor: AuthenticatedUser) {

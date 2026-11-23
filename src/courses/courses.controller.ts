@@ -18,13 +18,17 @@ import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { AuthenticatedUser } from '../auth/types/jwt-payload.type.js';
 import { UserRole } from '../users/user-role.enum.js';
 import { CoursesService } from './courses.service.js';
+import { UpdateCourseUseCase } from './application/update-course.use-case.js';
 import { CreateCourseDto } from './dto/create-course.dto.js';
 import { CoursesQueryDto } from './dto/courses-query.dto.js';
 import { UpdateCourseDto } from './dto/update-course.dto.js';
 
 @Controller('courses')
 export class CoursesController {
-  constructor(private readonly coursesService: CoursesService) {}
+  constructor(
+    private readonly coursesService: CoursesService,
+    private readonly updateCourseUseCase: UpdateCourseUseCase,
+  ) {}
 
   @Get()
   findAll(@Query() query: CoursesQueryDto) {
@@ -54,7 +58,11 @@ export class CoursesController {
     @Body() updateCourseDto: UpdateCourseDto,
     @Req() request: Request & { user: AuthenticatedUser },
   ) {
-    return this.coursesService.update(id, updateCourseDto, request.user);
+    return this.updateCourseUseCase.execute(
+      id,
+      updateCourseDto,
+      request.user,
+    );
   }
 
   @Delete(':id')
