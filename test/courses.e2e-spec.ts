@@ -5,6 +5,7 @@ import { DataSource, Repository } from 'typeorm';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { createCorsOptions } from '../src/config/cors.config.js';
+import { setupOpenApi } from '../src/config/openapi.config.js';
 import { User } from '../src/users/entities/user.entity.js';
 import { UserRole } from '../src/users/user-role.enum.js';
 
@@ -28,10 +29,9 @@ describe('Course HTTP flow (e2e)', () => {
     );
     const configService = app.get(ConfigService);
     app.enableCors(
-      createCorsOptions(
-        configService.getOrThrow<string[]>('CORS_ORIGINS'),
-      ),
+      createCorsOptions(configService.getOrThrow<string[]>('CORS_ORIGINS')),
     );
+    setupOpenApi(app, 'development');
     await app.init();
 
     dataSource = app.get(DataSource);
@@ -63,6 +63,39 @@ describe('Course HTTP flow (e2e)', () => {
           meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
         });
       });
+  });
+
+  it('documents the real course contract and Bearer authentication', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/docs-json')
+      .expect(200);
+    const document = response.body;
+
+    expect(document.info).toMatchObject({
+      title: 'CourseHub API',
+      version: '1.0.0',
+    });
+    expect(document.paths['/courses'].get.responses).toHaveProperty('200');
+    expect(document.paths['/courses'].get.responses).toHaveProperty('400');
+    expect(document.paths['/courses'].post.responses).toHaveProperty('401');
+    expect(document.paths['/courses'].post.responses).toHaveProperty('403');
+    expect(document.paths['/courses'].post.responses).toHaveProperty('500');
+    expect(document.paths['/courses/:id'].get.responses).toHaveProperty('404');
+    expect(document.paths['/courses'].post.security).toContainEqual({
+      BearerAuth: [],
+    });
+    expect(document.components.securitySchemes.BearerAuth).toMatchObject({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+    });
+    expect(document.paths['/courses'].get.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'page', in: 'query' }),
+        expect.objectContaining({ name: 'limit', in: 'query' }),
+        expect.objectContaining({ name: 'sortBy', in: 'query' }),
+      ]),
+    );
   });
 
   it('rejects a protected course write without a JWT', async () => {

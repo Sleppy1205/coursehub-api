@@ -299,6 +299,14 @@ La auditoría local del lockfile realizada para esta sesión informó 20 avisos 
 
 Para comprobar localmente el fallo controlado, cambia temporalmente una expectativa de una prueba unitaria a un valor incorrecto y ejecuta `npm test`: el paso debe terminar con código distinto de cero. Restaura la expectativa y vuelve a correr `npm test`; el workflow aplica el mismo comando, por lo que reportará esa falla en el paso de pruebas. Para verificar el recorrido del workflow localmente, ejecuta en orden `npm ci`, `npm run lint`, `npm test`, `npm run test:e2e` (con la base aislada de la Sesión 25) y `npm run build`.
 
+## OpenAPI y seguridad (Sesión 27)
+
+En `NODE_ENV=development`, inicia la API con `npm run start:dev` y abre `http://localhost:3000/docs`. El documento JSON está disponible en `http://localhost:3000/docs-json`. En `test` y `production` Swagger no se registra; el entorno productivo no expone automáticamente el explorador interactivo.
+
+OpenAPI documenta las rutas de estado, autenticación, cursos, estudiantes y matrículas, junto con los DTO, parámetros, resultados de éxito, errores HTTP y límites relevantes. El formato de error es `{ statusCode, path, timestamp, message }`; para `500`, `message` es genérico y no se exponen trazas ni SQL. Las rutas que requieren identidad están marcadas con `BearerAuth`; inicia sesión en `POST /auth/login`, copia el `accessToken` y pulsa **Authorize** en la interfaz. Nunca publiques ni guardes el token de una cuenta real.
+
+Compara el contrato de `GET /courses` en Swagger (parámetros y respuesta paginada `items`/`meta`) con una solicitud real a `http://localhost:3000/courses`. Prueba también `POST /courses`: una llamada sin token responde `401`; con rol insuficiente responde `403`; con docente o administrador autorizado, responde `201`. `npm test -- openapi.config` valida que el JSON de Swagger contiene rutas, parámetros y seguridad JWT, y que no se registra fuera de desarrollo. Las pruebas e2e verifican el mismo contrato junto con las respuestas HTTP reales cuando se ejecutan usando la base aislada de la Sesión 25.
+
 ## Lista de comprobación de Etapa 2
 
 | Aspecto | Verificación |
